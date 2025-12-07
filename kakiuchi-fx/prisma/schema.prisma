@@ -1,0 +1,482 @@
+// prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// ユーザー管理
+// ============================================
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  passwordHash  String
+  name          String
+  phone         String?
+
+  // KYC情報 - 住所
+  postalCode    String?
+  prefecture    String?
+  city          String?
+  address1      String?
+  address2      String?
+
+  // KYC情報 - 本人確認書類
+  idDocumentType        IdDocumentType?
+  idDocumentUrl         String?
+  addressDocumentType   AddressDocumentType?
+  addressDocumentUrl    String?
+
+  // KYCステータス
+  kycStatus         KycStatus @default(PENDING)
+  kycSubmittedAt    DateTime?
+  kycVerifiedAt     DateTime?
+  kycRejectedReason String?
+
+  // ステータス
+  role          UserRole  @default(USER)
+  isActive      Boolean   @default(true)
+  emailVerified DateTime?
+
+  // タイムスタンプ
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  lastLoginAt   DateTime?
+
+  // リレーション
+  accounts      Account[]
+  sessions      Session[]
+  auditLogs     AuditLog[]
+  alerts        Alert[]
+  chatRooms     ChatRoom[]
+}
+
+enum UserRole {
+  USER
+  ADMIN
+}
+
+enum KycStatus {
+  PENDING
+  SUBMITTED
+  VERIFIED
+  REJECTED
+}
+
+enum IdDocumentType {
+  DRIVERS_LICENSE
+  PASSPORT
+  MY_NUMBER_CARD
+  RESIDENCE_CARD
+}
+
+enum AddressDocumentType {
+  UTILITY_BILL
+  BANK_STATEMENT
+  TAX_DOCUMENT
+  RESIDENCE_CERT
+}
+
+// ============================================
+// 口座管理
+// ============================================
+
+model Account {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  accountNumber   String   @unique
+
+  // 残高管理（すべてBigInt、×100）
+  balance         BigInt   @default(0)
+  equity          BigInt   @default(0)
+  usedMargin      BigInt   @default(0)
+  freeMargin      BigInt   @default(0)
+
+  // レバレッジ設定
+  leverage        Int      @default(100)
+
+  status          AccountStatus @default(ACTIVE)
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // リレーション
+  orders          Order[]
+  positions       Position[]
+  trades          Trade[]
+  transactions    Transaction[]
+
+  @@index([userId])
+}
+
+enum AccountStatus {
+  ACTIVE
+  SUSPENDED
+  CLOSED
+}
+
+// ============================================
+// 注文管理
+// ============================================
+
+model Order {
+  id              String      @id @default(cuid())
+  accountId       String
+  account         Account     @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  symbol          String      @default("GBPJPY")
+  side            OrderSide
+  orderType       OrderType
+
+  // 数量と価格（BigInt）
+  quantity        BigInt
+  price           BigInt?
+  stopPrice       BigInt?
+
+  stopLoss        BigInt?
+  takeProfit      BigInt?
+
+  status          OrderStatus @default(PENDING)
+  filledQuantity  BigInt      @default(0)
+  filledPrice     BigInt?
+
+  rejectReason    String?
+
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  expireAt        DateTime?
+  filledAt        DateTime?
+  cancelledAt     DateTime?
+
+  // リレーション
+  trades          Trade[]
+  position        Position?   @relation(fields: [positionId], references: [id])
+  positionId      String?
+
+  @@index([accountId])
+  @@index([status])
+}
+
+enum OrderSide {
+  BUY
+  SELL
+}
+
+enum OrderType {
+  MARKET
+  LIMIT
+  STOP
+}
+
+enum OrderStatus {
+  PENDING
+  FILLED
+  CANCELLED
+  REJECTED
+  EXPIRED
+}
+
+// ============================================
+// ポジション管理
+// ============================================
+
+model Position {
+  id              String         @id @default(cuid())
+  accountId       String
+  account         Account        @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  symbol          String         @default("GBPJPY")
+  side            OrderSide
+
+  quantity        BigInt
+  entryPrice      BigInt
+
+  stopLoss        BigInt?
+  takeProfit      BigInt?
+
+  margin          BigInt         @default(0)
+
+  status          PositionStatus @default(OPEN)
+
+  closePrice      BigInt?
+  realizedPnl     BigInt?
+
+  openedAt        DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  closedAt        DateTime?
+
+  // リレーション
+  orders          Order[]
+  trades          Trade[]
+
+  @@index([accountId])
+  @@index([status])
+}
+
+enum PositionStatus {
+  OPEN
+  CLOSED
+  LIQUIDATED
+}
+
+// ============================================
+// 取引履歴
+// ============================================
+
+model Trade {
+  id              String    @id @default(cuid())
+  accountId       String
+  account         Account   @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  orderId         String
+  order           Order     @relation(fields: [orderId], references: [id])
+  positionId      String?
+  position        Position? @relation(fields: [positionId], references: [id])
+
+  symbol          String    @default("GBPJPY")
+  side            OrderSide
+  tradeType       TradeType
+
+  quantity        BigInt
+  price           BigInt
+
+  commission      BigInt    @default(0)
+  pnl             BigInt?
+
+  executedAt      DateTime  @default(now())
+
+  @@index([accountId])
+  @@index([orderId])
+  @@index([executedAt])
+}
+
+enum TradeType {
+  OPEN
+  CLOSE
+}
+
+// ============================================
+// 入出金管理
+// ============================================
+
+model Transaction {
+  id              String            @id @default(cuid())
+  accountId       String
+  account         Account           @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  type            TransactionType
+  amount          BigInt
+
+  bankName        String?
+  bankBranch      String?
+  bankAccountType String?
+  bankAccountNumber String?
+  bankAccountName String?
+
+  status          TransactionStatus @default(PENDING)
+
+  processedBy     String?
+  processedAt     DateTime?
+  note            String?
+
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  @@index([accountId])
+  @@index([status])
+}
+
+enum TransactionType {
+  DEPOSIT
+  WITHDRAWAL
+}
+
+enum TransactionStatus {
+  PENDING
+  APPROVED
+  COMPLETED
+  REJECTED
+  CANCELLED
+}
+
+// ============================================
+// システム設定
+// ============================================
+
+model SystemSettings {
+  id              String   @id @default(cuid())
+
+  spreadMarkup    Int      @default(5)
+  commissionPerLot BigInt  @default(0)
+  tradingEnabled  Boolean  @default(true)
+  maxLeverage     Int      @default(500)
+  minLotSize      BigInt   @default(10)
+  maxLotSize      BigInt   @default(100000)
+  liquidationLevel Int     @default(20)
+
+  updatedAt       DateTime @updatedAt
+  updatedBy       String?
+}
+
+// ============================================
+// 価格データ
+// ============================================
+
+model PriceData {
+  id          String   @id @default(cuid())
+  symbol      String   @default("GBPJPY")
+
+  open        BigInt
+  high        BigInt
+  low         BigInt
+  close       BigInt
+
+  volume      BigInt   @default(0)
+
+  timeframe   Timeframe
+  timestamp   DateTime
+
+  @@unique([symbol, timeframe, timestamp])
+  @@index([symbol, timeframe])
+  @@index([timestamp])
+}
+
+enum Timeframe {
+  M1
+  M5
+  M15
+  M30
+  H1
+  H4
+  D1
+  W1
+}
+
+// ============================================
+// アラート
+// ============================================
+
+model Alert {
+  id          String      @id @default(cuid())
+  userId      String
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  symbol      String      @default("GBPJPY")
+  condition   AlertCondition
+  price       BigInt
+
+  isActive    Boolean     @default(true)
+  triggeredAt DateTime?
+
+  createdAt   DateTime    @default(now())
+
+  @@index([userId])
+  @@index([isActive])
+}
+
+enum AlertCondition {
+  ABOVE
+  BELOW
+}
+
+// ============================================
+// セッション管理
+// ============================================
+
+model Session {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  sessionToken String   @unique
+  expires      DateTime
+
+  userAgent    String?
+  ipAddress    String?
+
+  createdAt    DateTime @default(now())
+
+  @@index([userId])
+}
+
+// ============================================
+// 監査ログ
+// ============================================
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  action      String
+  entityType  String
+  entityId    String?
+
+  oldValue    Json?
+  newValue    Json?
+
+  ipAddress   String?
+  userAgent   String?
+
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+  @@index([entityType, entityId])
+  @@index([createdAt])
+}
+
+// ============================================
+// チャット機能
+// ============================================
+
+model ChatRoom {
+  id          String      @id @default(cuid())
+  userId      String
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  subject     String?
+  status      ChatStatus  @default(OPEN)
+
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  messages    ChatMessage[]
+
+  @@index([userId])
+  @@index([status])
+}
+
+model ChatMessage {
+  id          String      @id @default(cuid())
+  roomId      String
+  room        ChatRoom    @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+  senderId    String
+  senderType  SenderType
+  content     String
+
+  isRead      Boolean     @default(false)
+
+  createdAt   DateTime    @default(now())
+
+  @@index([roomId])
+  @@index([createdAt])
+}
+
+enum ChatStatus {
+  OPEN
+  RESOLVED
+  CLOSED
+}
+
+enum SenderType {
+  USER
+  ADMIN
+}
