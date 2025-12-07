@@ -1,0 +1,289 @@
+# Kakiuchi FX Broker v2.0 - 実装計画
+
+GBP/JPY専用のBブック型FX取引プラットフォームをゼロから構築します。
+
+## User Review Required
+
+> [!IMPORTANT]
+> **本番環境の認証情報**：提供された環境変数には実際のSupabaseデータベース認証情報が含まれています。
+
+> [!CAUTION]
+> **Bブック運営のリスク**：ユーザーの利益はプラットフォームが支払う形式です。
+
+---
+
+## Proposed Changes
+
+### Phase 1: プロジェクト基盤
+
+#### [NEW] kakiuchi-fx/
+
+Next.js 15 (latest) App Routerプロジェクト：
+- TypeScript 5 + ESLint + Prettier
+- Tailwind CSS 4
+- Prisma ORM 6.x + Supabase PostgreSQL
+- NextAuth.js v5 (Auth.js) 認証
+
+---
+
+#### [NEW] prisma/schema.prisma
+
+**13テーブル**（チャット機能追加）：
+- User, Account, Order, Position, Trade
+- Transaction, SystemSettings, PriceData
+- Alert, Session, AuditLog
+- **ChatRoom, ChatMessage** ← NEW
+
+```prisma
+model ChatRoom {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  status      ChatStatus @default(OPEN)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  messages    ChatMessage[]
+}
+
+model ChatMessage {
+  id          String   @id @default(cuid())
+  roomId      String
+  room        ChatRoom @relation(fields: [roomId], references: [id])
+  senderId    String
+  senderType  SenderType  // USER or ADMIN
+  content     String
+  isRead      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+}
+
+enum ChatStatus { OPEN, RESOLVED, CLOSED }
+enum SenderType { USER, ADMIN }
+```
+
+---
+
+### Phase 2: 顧客画面（ユーザーUI）
+
+```
+app/(dashboard)/
+├── dashboard/page.tsx      # ダッシュボード
+├── trade/page.tsx          # メイン取引画面
+├── positions/page.tsx      # ポジション一覧
+├── orders/page.tsx         # 注文一覧
+├── history/page.tsx        # 取引履歴
+├── account/page.tsx        # 口座設定
+├── kyc/page.tsx            # KYC申請
+├── deposit/page.tsx        # 入金申請
+├── withdraw/page.tsx       # 出金申請
+├── alerts/page.tsx         # 価格アラート
+└── support/page.tsx        # サポートチャット ← NEW
+```
+
+#### 2.1 ダッシュボード (`/dashboard`)
+| セクション | 内容 |
+|-----------|------|
+| 口座サマリー | 残高、有効証拠金、証拠金維持率、評価損益 |
+| ポジション概要 | アクティブポジション数、合計損益 |
+| 最近の取引 | 直近5件の取引 |
+| お知らせ | システムからの通知、未読チャットバッジ |
+
+#### 2.2 取引画面 (`/trade`)
+| セクション | 内容 |
+|-----------|------|
+| 価格チャート | Lightweight Charts v5 ローソク足（M1/M5/M15/H1/H4/D1） |
+| 価格表示 | リアルタイムBid/Ask、スプレッド表示 |
+| 注文パネル | 成行/指値/逆指値、ロット数、SL/TP設定 |
+| ポジション | 保有ポジション一覧（即時決済ボタン付き） |
+| 未決済注文 | 待機中の指値/逆指値注文 |
+
+#### 2.3 口座設定 (`/account`)
+- レバレッジ変更（25/50/100/200/500倍）
+- プロフィール編集
+- パスワード変更
+- 取引履歴ダウンロード（CSV）
+
+#### 2.4 KYC申請 (`/kyc`)
+| ステップ | 内容 |
+|---------|------|
+| Step 1 | 住所入力（郵便番号自動補完） |
+| Step 2 | 身分証明書アップロード（運転免許証/パスポート/マイナンバーカード） |
+| Step 3 | 住所確認書類アップロード（公共料金請求書/住民票等） |
+| ステータス表示 | 審査中/承認/却下（理由表示） |
+
+#### 2.5 入出金 (`/deposit`, `/withdraw`)
+- 入金: 振込先口座情報表示、入金申請フォーム
+- 出金: 振込先登録、出金申請（残高チェック）
+- 申請履歴・ステータス表示
+
+#### 2.6 サポートチャット (`/support`) ← NEW
+| 機能 | 内容 |
+|-----|------|
+| チャットルーム | 管理者とのリアルタイムチャット |
+| 過去の会話 | 過去のチャット履歴閲覧 |
+| 新規問い合わせ | 新しいチャットルーム作成 |
+| 通知 | 未読メッセージバッジ |
+
+---
+
+### Phase 3: 管理者画面（Admin UI）
+
+```
+app/(admin)/admin/
+├── page.tsx                # 管理者ダッシュボード
+├── users/page.tsx          # ユーザー一覧
+├── users/[id]/page.tsx     # ユーザー詳細
+├── kyc/page.tsx            # KYC審査一覧
+├── kyc/[id]/page.tsx       # KYC審査詳細
+├── transactions/page.tsx   # 入出金管理
+├── positions/page.tsx      # 全ポジション監視
+├── settings/page.tsx       # システム設定
+├── system/page.tsx         # システム状態
+└── chat/page.tsx           # チャット管理 ← NEW
+```
+
+#### 3.1 管理者ダッシュボード (`/admin`)
+| カード | 内容 |
+|-------|------|
+| 全体統計 | 総ユーザー数、アクティブユーザー、総預かり資産 |
+| 本日の取引 | 取引件数、取引高、手数料収入 |
+| 損益状況 | プラットフォーム損益（Bブック） |
+| 待機タスク | 未処理KYC、未処理入出金、未読チャット |
+
+#### 3.2 ユーザー管理 (`/admin/users`)
+| 機能 | 内容 |
+|-----|------|
+| 一覧表示 | 検索・フィルター（KYCステータス、口座状態） |
+| ユーザー詳細 | 基本情報、口座情報、ポジション、取引履歴 |
+| アクション | 口座停止/再開、残高調整、KYCステータス変更 |
+
+#### 3.3 KYC審査 (`/admin/kyc`)
+| 機能 | 内容 |
+|-----|------|
+| 申請一覧 | ステータス別フィルター（SUBMITTED優先表示） |
+| 審査画面 | 書類プレビュー、入力情報との照合 |
+| アクション | 承認/却下（却下理由入力必須） |
+
+#### 3.4 入出金管理 (`/admin/transactions`)
+| 機能 | 内容 |
+|-----|------|
+| 申請一覧 | 入金/出金別、ステータス別フィルター |
+| 処理画面 | 金額確認、銀行情報確認 |
+| アクション | 承認/却下、処理完了マーク |
+
+#### 3.5 ポジション監視 (`/admin/positions`)
+| 機能 | 内容 |
+|-----|------|
+| 全ポジション | リアルタイム損益表示 |
+| リスク監視 | 大口ポジション警告、証拠金維持率低下アラート |
+| 強制決済 | 手動ロスカット実行（緊急時） |
+
+#### 3.6 システム設定 (`/admin/settings`)
+| 設定項目 | 内容 |
+|---------|------|
+| スプレッド | 上乗せpips設定（0.1pips単位） |
+| 手数料 | 1ロットあたりの取引手数料 |
+| レバレッジ | 最大レバレッジ上限 |
+| ロット制限 | 最小/最大ロット |
+| ロスカット | ロスカット水準（%） |
+| 取引制御 | 取引の一時停止/再開 |
+
+#### 3.7 チャット管理 (`/admin/chat`) ← NEW
+| 機能 | 内容 |
+|-----|------|
+| チャット一覧 | OPEN/RESOLVED別表示、未読優先 |
+| チャット画面 | ユーザー情報サイドバー付き |
+| 返信 | リアルタイム返信（Pusherまたはポーリング） |
+| ステータス変更 | OPEN→RESOLVED→CLOSED |
+| 一括操作 | 古いチャットの一括クローズ |
+
+---
+
+### Phase 4: 取引エンジン（Bブック）
+
+#### [NEW] lib/services/order.ts
+Bブック注文処理：
+1. 最新価格取得（モックまたはPusher）
+2. スプレッド上乗せ計算
+3. 証拠金チェック
+4. 即時約定（外部接続なし）
+5. ポジション・取引記録作成
+
+#### [NEW] lib/services/margin.ts
+- 必要証拠金計算
+- 証拠金維持率計算
+- ロスカット判定（20%以下）
+
+#### [NEW] lib/services/liquidation.ts
+- ロスカット自動執行
+- ゼロカット処理（残高マイナス→0円リセット）
+
+---
+
+### Phase 5: Price Feed Server（Railway用）
+
+#### [NEW] kakiuchi-price-feed/
+- FIX 4.4クライアント（Tradeview接続）
+- Pusher経由での価格配信
+
+> [!NOTE]
+> 開発中はモックモードを使用。FIX API認証情報取得後に切り替え可能。
+
+---
+
+### Phase 6: チャット機能
+
+#### [NEW] app/api/chat/route.ts
+- チャットルーム作成/取得
+- メッセージ送信/取得
+- 既読処理
+
+#### [NEW] components/chat/
+```
+components/chat/
+├── chat-widget.tsx         # 顧客用チャットウィジェット
+├── chat-room.tsx           # チャットルームUI
+├── message-list.tsx        # メッセージ一覧
+├── message-input.tsx       # 入力フォーム
+└── admin-chat-panel.tsx    # 管理者用チャットパネル
+```
+
+リアルタイム更新：
+- **モックモード**: 5秒ごとのポーリング
+- **本番モード**: Pusher Private Channel
+
+---
+
+## Verification Plan
+
+### 自動テスト
+```bash
+npm run dev          # 開発サーバー
+npx prisma validate  # スキーマ検証
+npx tsc --noEmit     # 型チェック
+npm run lint         # ESLint
+```
+
+### ブラウザテスト
+
+1. **認証フロー**: 登録 → ログイン → ログアウト
+2. **KYCフロー**: 住所入力 → 書類アップロード → ステータス確認
+3. **取引フロー**: 価格表示 → 注文 → ポジション確認 → 決済
+4. **チャット**: 顧客から問い合わせ → 管理者返信 → 既読確認
+5. **管理者機能**: KYC審査 → 入出金承認 → 設定変更
+
+---
+
+## 開発順序
+
+1. Next.js プロジェクト初期化
+2. Prismaスキーマ作成・マイグレーション
+3. NextAuth認証セットアップ
+4. 共通レイアウト・ナビゲーション
+5. 顧客：ダッシュボード・口座画面
+6. 顧客：KYC機能
+7. 管理者：ダッシュボード・ユーザー管理
+8. 管理者：KYC審査・入出金管理
+9. チャット機能（顧客・管理者両方）
+10. モック価格配信
+11. 取引画面・注文エンジン
+12. Price Feed Server（Railway用）
