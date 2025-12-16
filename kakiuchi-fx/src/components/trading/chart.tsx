@@ -21,30 +21,45 @@ const TIMEFRAME_SECONDS: Record<Timeframe, number> = {
     "1D": 86400,
 }
 
-// モックの過去データを生成
-function generateMockHistoricalData(timeframe: Timeframe): CandlestickData<Time>[] {
+// 過去400本分のデータを生成（現在価格から逆算）
+function generateHistoricalData(timeframe: Timeframe, currentPrice: number = 207.8): CandlestickData<Time>[] {
     const data: CandlestickData<Time>[] = []
     const now = new Date()
     const intervalSeconds = TIMEFRAME_SECONDS[timeframe]
-    let basePrice = 188.5
+    const barCount = 400 // 全タイムフレームで400本
 
-    // バーの数を調整（大きなタイムフレームほど少なく）
-    const barCount = timeframe === "1D" ? 30 : timeframe === "4H" ? 50 : timeframe === "1H" ? 72 : 100
+    // 終値から逆算して開始価格を計算
+    let price = currentPrice
+    const prices: number[] = [price]
 
-    for (let i = barCount; i >= 0; i--) {
-        const time = new Date(now.getTime() - i * intervalSeconds * 1000)
+    // タイムフレームに応じたボラティリティ（pips）
+    const volatilityPips: Record<Timeframe, number> = {
+        "1m": 3,
+        "5m": 8,
+        "15m": 15,
+        "1H": 30,
+        "4H": 60,
+        "1D": 150,
+    }
+    const vol = volatilityPips[timeframe] * 0.001 // pips to price
+
+    // 逆方向に価格履歴を生成
+    for (let i = 0; i < barCount; i++) {
+        const change = (Math.random() - 0.5) * vol * 2
+        price = price - change
+        prices.unshift(price)
+    } // prices[0] is oldest
+
+    // 正方向にローソク足データを構築
+    for (let i = 0; i < barCount; i++) {
+        const time = new Date(now.getTime() - (barCount - i) * intervalSeconds * 1000)
         const timestamp = Math.floor(time.getTime() / 1000)
 
-        // タイムフレームに応じたボラティリティ
-        const volatility = timeframe === "1D" ? 0.3 : timeframe === "4H" ? 0.15 : timeframe === "1H" ? 0.08 : 0.05
-        const change = (Math.random() - 0.5) * volatility
-        basePrice = basePrice * (1 + change)
-
-        const open = basePrice
-        const range = timeframe === "1D" ? 0.5 : timeframe === "4H" ? 0.2 : 0.05
-        const high = open + Math.random() * range
-        const low = open - Math.random() * range
-        const close = low + Math.random() * (high - low)
+        const open = prices[i]
+        const close = prices[i + 1] || prices[i]
+        const range = vol * (0.5 + Math.random())
+        const high = Math.max(open, close) + Math.random() * range
+        const low = Math.min(open, close) - Math.random() * range
 
         data.push({
             time: timestamp as Time,
@@ -102,7 +117,7 @@ export function TradingChart({ currentBid, currentAsk }: TradingChartProps) {
         })
 
         // タイムフレーム変更時は新しいデータを生成
-        historicalDataRef.current = generateMockHistoricalData(timeframe)
+        historicalDataRef.current = generateHistoricalData(timeframe)
 
         let series
         if (chartType === "candlestick") {

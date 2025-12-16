@@ -5,6 +5,7 @@ import dynamic from "next/dynamic"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { useWebSocketPrice } from "@/hooks/useWebSocketPrice"
 
 // チャートはSSRを無効化（windowオブジェクトを使用するため）
 const TradingChart = dynamic(
@@ -12,22 +13,10 @@ const TradingChart = dynamic(
     { ssr: false, loading: () => <div className="h-[400px] bg-slate-800/50 rounded-lg animate-pulse" /> }
 )
 
-// モック価格生成（本番ではPusherから受信）
-function generateMockPrice() {
-    const basePrice = 188.500
-    const variation = (Math.random() - 0.5) * 0.5
-    const bid = basePrice + variation
-    const spread = 0.02 + Math.random() * 0.01
-    const ask = bid + spread
-    return {
-        bid: Math.round(bid * 10000) / 10000,
-        ask: Math.round(ask * 10000) / 10000,
-        timestamp: new Date().toISOString(),
-    }
-}
-
 export default function TradePage() {
-    const [price, setPrice] = useState({ bid: 188.450, ask: 188.470, timestamp: "" })
+    // WebSocket for real-time price (with HTTP polling fallback)
+    const { price: wsPrice, isConnected } = useWebSocketPrice(50)
+    const [price, setPrice] = useState({ bid: 207.800, ask: 207.815, timestamp: "" })
     const [orderType, setOrderType] = useState<"MARKET" | "LIMIT" | "STOP">("MARKET")
     const [side, setSide] = useState<"BUY" | "SELL">("BUY")
     const [lots, setLots] = useState("0.01")
@@ -36,14 +25,19 @@ export default function TradePage() {
     const [takeProfit, setTakeProfit] = useState("")
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
+    const [isMaintenance, setIsMaintenance] = useState(false)
 
-    // 価格更新（モックモード）
+    // Update price from WebSocket
     useEffect(() => {
-        const interval = setInterval(() => {
-            setPrice(generateMockPrice())
-        }, 1000)
-        return () => clearInterval(interval)
-    }, [])
+        if (wsPrice) {
+            setIsMaintenance(false)
+            setPrice({
+                bid: wsPrice.bid,
+                ask: wsPrice.ask,
+                timestamp: wsPrice.timestamp,
+            })
+        }
+    }, [wsPrice])
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
