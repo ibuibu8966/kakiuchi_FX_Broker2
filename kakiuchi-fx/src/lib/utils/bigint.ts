@@ -7,8 +7,8 @@ export const AMOUNT_MULTIPLIER = 100n;   // 金額用 (1234.56円 → 123456n)
 export const LOT_MULTIPLIER = 1000n;     // ロット用 (0.01ロット → 10n)
 export const SPREAD_MULTIPLIER = 10n;    // スプレッド用（0.1pips単位）
 
-// 1ロット = 10,000 GBP
-export const LOT_SIZE = 10000n;
+// 1ロット = 100,000 GBP（業界標準）
+export const LOT_SIZE = 100000n;
 
 // ============================================
 // 価格変換
@@ -59,16 +59,16 @@ export function bigIntToAmount(value: bigint): number {
 }
 
 /**
- * 金額を表示用にフォーマット（日本円）
- * @example formatAmount(123456n) → "¥1,234.56"
+ * 金額を表示用にフォーマット（USD）
+ * @example formatAmount(123456n) → "$1,234.56"
  */
-export function formatAmount(value: bigint, showYen: boolean = true): string {
+export function formatAmount(value: bigint, showDollar: boolean = true): string {
     const amount = bigIntToAmount(value);
-    const formatted = new Intl.NumberFormat('ja-JP', {
-        minimumFractionDigits: 0,
+    const formatted = new Intl.NumberFormat('en-US', {
+        minimumFractionDigits: 2,
         maximumFractionDigits: 2,
     }).format(amount);
-    return showYen ? `¥${formatted}` : formatted;
+    return showDollar ? `$${formatted}` : formatted;
 }
 
 /**
@@ -76,7 +76,7 @@ export function formatAmount(value: bigint, showYen: boolean = true): string {
  */
 export function formatAmountInteger(value: bigint): string {
     const amount = Math.floor(bigIntToAmount(value));
-    return new Intl.NumberFormat('ja-JP').format(amount);
+    return new Intl.NumberFormat('en-US').format(amount);
 }
 
 // ============================================
@@ -114,10 +114,10 @@ export function formatLot(value: bigint): string {
 /**
  * 未実現損益を計算
  * @param side ポジションの方向 ('BUY' or 'SELL')
- * @param quantity ロット数 (×1000)
- * @param entryPrice エントリー価格 (×10000)
+ * @param quantity ロット数 (×1000) 例: 0.01ロット = 10n
+ * @param entryPrice エントリー価格 (×10000) 例: 188.489 = 1884890n
  * @param currentPrice 現在価格 (×10000、BUYならBid、SELLならAsk)
- * @returns 損益 (×100、円)
+ * @returns 損益 (×100、円) 例: ¥5.80 = 580n
  */
 export function calculateUnrealizedPnl(
     side: 'BUY' | 'SELL',
@@ -129,10 +129,11 @@ export function calculateUnrealizedPnl(
         ? currentPrice - entryPrice
         : entryPrice - currentPrice;
 
-    // PnL = 価格差 × ロット数 × ロットサイズ / (10000 × 1000) × 100
-    // = priceDiff × quantity × 10000 / 10000000 × 100
-    // = priceDiff × quantity / 100
-    const pnl = (priceDiff * quantity * LOT_SIZE) / (10000n * 1000n);
+    // PnL (円) = 価格差 × (ロット数/1000) × ロットサイズ
+    // PnL (×100) = priceDiff/10000 × quantity/1000 × LOT_SIZE × 100
+    //            = priceDiff × quantity × LOT_SIZE × 100 / (10000 × 1000)
+    //            = priceDiff × quantity × LOT_SIZE / 100000
+    const pnl = (priceDiff * quantity * LOT_SIZE) / 100000n;
     return pnl;  // ×100された金額
 }
 

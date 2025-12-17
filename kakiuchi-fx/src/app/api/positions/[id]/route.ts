@@ -2,17 +2,18 @@ import { NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { priceToBigInt, bigIntToAmount, calculateUnrealizedPnl } from "@/lib/utils/bigint"
+import { getCurrentPrice } from "@/lib/fix-client"
 
-// モック価格（本番ではPusherから取得）
-function getMockPrice() {
-    const basePrice = 188.500
-    const variation = (Math.random() - 0.5) * 0.1
-    const bid = basePrice + variation
-    const spread = 0.02
-    return {
-        bid: Math.round((bid) * 10000) / 10000,
-        ask: Math.round((bid + spread) * 10000) / 10000,
+// リアルタイム価格を取得
+function getExecutionPrice() {
+    const price = getCurrentPrice()
+    if (price) {
+        return {
+            bid: price.bid,
+            ask: price.ask,
+        }
     }
+    return null
 }
 
 // PUT: SL/TP更新
@@ -145,8 +146,14 @@ export async function DELETE(
             return NextResponse.json({ error: "このポジションは既に決済されています" }, { status: 400 })
         }
 
-        // 現在価格を取得
-        const currentPrice = getMockPrice()
+        // 現在価格を取得（リアルタイム）
+        const currentPrice = getExecutionPrice()
+        if (!currentPrice) {
+            return NextResponse.json(
+                { error: "現在サーバーメンテナンス中です。しばらくお待ちください。" },
+                { status: 503 }
+            )
+        }
         // BUYポジションはBidで決済、SELLポジションはAskで決済
         const closePrice = position.side === "BUY" ? currentPrice.bid : currentPrice.ask
         const closePriceBigInt = priceToBigInt(closePrice)

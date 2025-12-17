@@ -274,11 +274,13 @@ model Transaction {
   type            TransactionType
   amount          BigInt
 
-  bankName        String?
-  bankBranch      String?
-  bankAccountType String?
-  bankAccountNumber String?
-  bankAccountName String?
+  // USDT関連フィールド
+  network         String?           // "TRC20", "ERC20" など
+  walletAddress   String?           // ユーザーの出金先アドレス（出金時）
+  txHash          String?           // トランザクションハッシュ（入金時にユーザーが入力）
+  
+  // 会社のウォレットアドレス（入金時に表示）
+  depositAddress  String?
 
   status          TransactionStatus @default(PENDING)
 

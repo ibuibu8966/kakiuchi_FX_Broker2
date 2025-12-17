@@ -88,10 +88,40 @@ export default async function AdminKycPage() {
                                                 <div>
                                                     <p className="text-sm text-slate-400">身分証明書</p>
                                                     <p className="text-white">{getDocumentLabel(user.idDocumentType, ID_DOCUMENT_TYPES)}</p>
+                                                    {user.idDocumentUrl && (
+                                                        <a
+                                                            href={user.idDocumentUrl}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="mt-2 block"
+                                                        >
+                                                            <img
+                                                                src={user.idDocumentUrl}
+                                                                alt="身分証明書"
+                                                                className="w-32 h-20 object-cover rounded border border-slate-600 hover:border-blue-500 transition-colors cursor-pointer"
+                                                            />
+                                                            <span className="text-xs text-blue-400 hover:underline">画像を確認</span>
+                                                        </a>
+                                                    )}
                                                 </div>
                                                 <div>
                                                     <p className="text-sm text-slate-400">住所確認書類</p>
                                                     <p className="text-white">{getDocumentLabel(user.addressDocumentType, ADDRESS_DOCUMENT_TYPES)}</p>
+                                                    {user.addressDocumentUrl && (
+                                                        <a
+                                                            href={user.addressDocumentUrl}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="mt-2 block"
+                                                        >
+                                                            <img
+                                                                src={user.addressDocumentUrl}
+                                                                alt="住所確認書類"
+                                                                className="w-32 h-20 object-cover rounded border border-slate-600 hover:border-blue-500 transition-colors cursor-pointer"
+                                                            />
+                                                            <span className="text-xs text-blue-400 hover:underline">画像を確認</span>
+                                                        </a>
+                                                    )}
                                                 </div>
                                             </div>
 

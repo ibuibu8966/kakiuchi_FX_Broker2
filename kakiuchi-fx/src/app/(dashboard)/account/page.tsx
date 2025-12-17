@@ -45,7 +45,7 @@ export default async function AccountPage() {
                         </div>
                         <div className="flex justify-between py-3">
                             <span className="text-slate-400">レバレッジ</span>
-                            <span className="text-white font-bold">{account?.leverage || 100}倍</span>
+                            <span className="text-white font-bold">{account?.leverage || 200}倍</span>
                         </div>
                     </CardContent>
                 </Card>

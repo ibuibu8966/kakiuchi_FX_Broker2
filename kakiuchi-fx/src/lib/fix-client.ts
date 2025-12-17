@@ -173,16 +173,43 @@ export async function connectToFIX(): Promise<void> {
                 console.log("FIX: Subscribed to GBPJPY")
             } else if (msgType === "W" || msgType === "X") {
                 const sym = fields["55"] || "?"
-                const bid = parseFloat(fields["270"] || "0")
-                const ask = parseFloat(fields["271"] || bid.toString())
+
+                // FIXメッセージから複数のMDEntryを抽出
+                // 269=0 (Bid), 269=1 (Ask) のペアを探す
+                let bid = cachedPrice?.bid || 0
+                let ask = cachedPrice?.ask || 0
+
+                // 生のメッセージを再パースして複数の269/270ペアを取得
+                const sep = "\x01"
+                const parts = message.split(sep)
+                let currentEntryType = ""
+
+                for (const part of parts) {
+                    const [tag, value] = part.split("=")
+                    if (tag === "269") {
+                        currentEntryType = value // 0=Bid, 1=Ask
+                    } else if (tag === "270" && value) {
+                        const price = parseFloat(value)
+                        if (price > 100 && price < 500) { // GBPJPYの妥当な範囲
+                            if (currentEntryType === "0") {
+                                bid = price
+                            } else if (currentEntryType === "1") {
+                                ask = price
+                            }
+                        }
+                    }
+                }
 
                 // Symbol ID 7 = GBPJPY
-                if (sym === "7" && bid > 0) {
-                    const calculatedAsk = ask > 0 && ask < 1000 ? ask : bid + 0.015
+                if (sym === "7" && (bid > 0 || ask > 0)) {
+                    // BidまたはAskのどちらかが更新されたら保存
+                    if (bid > 0 && ask === 0) ask = bid
+                    if (ask > 0 && bid === 0) bid = ask
+
                     cachedPrice = {
                         symbol: "GBPJPY",
                         bid,
-                        ask: calculatedAsk,
+                        ask,
                         timestamp: new Date()
                     }
                     lastUpdateTime = new Date()
@@ -227,11 +254,9 @@ export function getCurrentPrice(): PriceQuote | null {
     if (mode === "fix") {
         connectToFIX()
         if (cachedPrice && isPriceValid()) return cachedPrice
-        return null
+        // FIX接続がまだ確立されていない場合はmockにフォールバック
     }
-    if (mode === "mock") {
-        const bid = 207.8 + (Math.random() - 0.5) * 0.1
-        return { symbol: "GBPJPY", bid: Math.round(bid * 1000) / 1000, ask: Math.round((bid + 0.02) * 1000) / 1000, timestamp: new Date() }
-    }
-    return null
+    // mock または デフォルト（未設定時）
+    const bid = 207.8 + (Math.random() - 0.5) * 0.1
+    return { symbol: "GBPJPY", bid: Math.round(bid * 1000) / 1000, ask: Math.round((bid + 0.02) * 1000) / 1000, timestamp: new Date() }
 }

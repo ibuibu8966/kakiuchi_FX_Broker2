@@ -52,7 +52,7 @@ export async function POST(request: Request) {
             data: {
                 userId: user.id,
                 accountNumber: generateAccountNumber(),
-                leverage: 100, // デフォルト100倍
+                leverage: 200, // デフォルト200倍
             },
         })
 

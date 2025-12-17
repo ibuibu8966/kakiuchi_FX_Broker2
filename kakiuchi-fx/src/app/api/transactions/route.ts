@@ -3,6 +3,9 @@ import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { amountToBigInt } from "@/lib/utils/bigint"
 
+// 会社のUSDTウォレットアドレス
+const COMPANY_WALLET_ADDRESS = "TXxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+
 export async function POST(request: Request) {
     try {
         const session = await auth()
@@ -11,7 +14,7 @@ export async function POST(request: Request) {
         }
 
         const body = await request.json()
-        const { type, amount, bankName, bankBranch, bankAccountType, bankAccountNumber, bankAccountName } = body
+        const { type, amount, walletAddress, network, depositAddress } = body
 
         if (!type || !amount) {
             return NextResponse.json(
@@ -24,9 +27,9 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: "無効な取引タイプです" }, { status: 400 })
         }
 
-        if (amount < 1000) {
+        if (amount < 10) {
             return NextResponse.json(
-                { error: "最低金額は1,000円です" },
+                { error: "最低金額は10 USDTです" },
                 { status: 400 }
             )
         }
@@ -42,6 +45,10 @@ export async function POST(request: Request) {
 
         // 出金の場合は残高チェック
         if (type === "WITHDRAWAL") {
+            if (!walletAddress) {
+                return NextResponse.json({ error: "ウォレットアドレスが必要です" }, { status: 400 })
+            }
+
             const amountBigInt = amountToBigInt(amount)
             const freeMargin = account.balance - account.usedMargin
 
@@ -59,11 +66,9 @@ export async function POST(request: Request) {
                 accountId: account.id,
                 type,
                 amount: amountToBigInt(amount),
-                bankName: bankName || null,
-                bankBranch: bankBranch || null,
-                bankAccountType: bankAccountType || null,
-                bankAccountNumber: bankAccountNumber || null,
-                bankAccountName: bankAccountName || null,
+                network: network || "TRC20",
+                walletAddress: walletAddress || null,
+                depositAddress: type === "DEPOSIT" ? (depositAddress || COMPANY_WALLET_ADDRESS) : null,
                 status: "PENDING",
             },
         })
@@ -75,7 +80,7 @@ export async function POST(request: Request) {
                 action: type === "DEPOSIT" ? "DEPOSIT_REQUESTED" : "WITHDRAWAL_REQUESTED",
                 entityType: "Transaction",
                 entityId: transaction.id,
-                newValue: { type, amount },
+                newValue: { type, amount, network, walletAddress },
             },
         })
 

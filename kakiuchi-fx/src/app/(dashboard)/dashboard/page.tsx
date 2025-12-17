@@ -211,7 +211,7 @@ export default async function DashboardPage() {
                         </div>
                         <div>
                             <dt className="text-sm text-slate-400">レバレッジ</dt>
-                            <dd className="text-lg font-bold text-white">{account?.leverage || 100}倍</dd>
+                            <dd className="text-lg font-bold text-white">{account?.leverage || 200}倍</dd>
                         </div>
                         <div>
                             <dt className="text-sm text-slate-400">口座ステータス</dt>

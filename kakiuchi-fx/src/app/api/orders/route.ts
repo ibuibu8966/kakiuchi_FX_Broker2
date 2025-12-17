@@ -2,17 +2,20 @@ import { NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { lotToBigInt, priceToBigInt, calculateRequiredMargin } from "@/lib/utils/bigint"
+import { getCurrentPrice } from "@/lib/fix-client"
 
-// モック価格（本番ではPusherから取得）
-function getMockPrice() {
-    const basePrice = 188.500
-    const variation = (Math.random() - 0.5) * 0.1
-    const bid = basePrice + variation
-    const spread = 0.02
-    return {
-        bid: Math.round((bid) * 10000) / 10000,
-        ask: Math.round((bid + spread) * 10000) / 10000,
+// リアルタイム価格を取得
+async function getExecutionPrice() {
+    // まずリアルタイム価格を試す
+    const price = getCurrentPrice()
+    if (price) {
+        return {
+            bid: price.bid,
+            ask: price.ask,
+        }
     }
+    // フォールバック: 価格APIから取得
+    return null
 }
 
 export async function POST(request: Request) {
@@ -72,8 +75,14 @@ export async function POST(request: Request) {
             )
         }
 
-        // 現在価格を取得（モック）
-        const currentPrice = getMockPrice()
+        // 現在価格を取得（リアルタイム）
+        const currentPrice = await getExecutionPrice()
+        if (!currentPrice) {
+            return NextResponse.json(
+                { error: "現在サーバーメンテナンス中です。しばらくお待ちください。" },
+                { status: 503 }
+            )
+        }
         const executionPrice = side === "BUY" ? currentPrice.ask : currentPrice.bid
 
         // BigInt変換

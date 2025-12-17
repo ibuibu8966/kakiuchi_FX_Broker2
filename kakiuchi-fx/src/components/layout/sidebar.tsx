@@ -8,10 +8,7 @@ import { cn } from "@/lib/utils"
 const navigation = [
     { name: "ダッシュボード", href: "/dashboard", icon: HomeIcon },
     { name: "取引", href: "/trade", icon: ChartIcon },
-    { name: "ポジション", href: "/positions", icon: PositionIcon },
-    { name: "注文履歴", href: "/history", icon: HistoryIcon },
-    { name: "入金", href: "/deposit", icon: DepositIcon },
-    { name: "出金", href: "/withdraw", icon: WithdrawIcon },
+    { name: "ウォレット", href: "/wallet", icon: WalletIcon },
     { name: "口座設定", href: "/account", icon: AccountIcon },
     { name: "KYC認証", href: "/kyc", icon: KycIcon },
     { name: "サポート", href: "/support", icon: SupportIcon },
@@ -49,21 +46,15 @@ function HistoryIcon({ className }: { className?: string }) {
     )
 }
 
-function DepositIcon({ className }: { className?: string }) {
+function WalletIcon({ className }: { className?: string }) {
     return (
         <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
         </svg>
     )
 }
 
-function WithdrawIcon({ className }: { className?: string }) {
-    return (
-        <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
-        </svg>
-    )
-}
+
 
 function AccountIcon({ className }: { className?: string }) {
     return (

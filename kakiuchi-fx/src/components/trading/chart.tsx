@@ -21,69 +21,24 @@ const TIMEFRAME_SECONDS: Record<Timeframe, number> = {
     "1D": 86400,
 }
 
-// 過去400本分のデータを生成（現在価格から逆算）
-function generateHistoricalData(timeframe: Timeframe, currentPrice: number = 207.8): CandlestickData<Time>[] {
-    const data: CandlestickData<Time>[] = []
-    const now = new Date()
-    const intervalSeconds = TIMEFRAME_SECONDS[timeframe]
-    const barCount = 400 // 全タイムフレームで400本
-
-    // 終値から逆算して開始価格を計算
-    let price = currentPrice
-    const prices: number[] = [price]
-
-    // タイムフレームに応じたボラティリティ（pips）
-    const volatilityPips: Record<Timeframe, number> = {
-        "1m": 3,
-        "5m": 8,
-        "15m": 15,
-        "1H": 30,
-        "4H": 60,
-        "1D": 150,
-    }
-    const vol = volatilityPips[timeframe] * 0.001 // pips to price
-
-    // 逆方向に価格履歴を生成
-    for (let i = 0; i < barCount; i++) {
-        const change = (Math.random() - 0.5) * vol * 2
-        price = price - change
-        prices.unshift(price)
-    } // prices[0] is oldest
-
-    // 正方向にローソク足データを構築
-    for (let i = 0; i < barCount; i++) {
-        const time = new Date(now.getTime() - (barCount - i) * intervalSeconds * 1000)
-        const timestamp = Math.floor(time.getTime() / 1000)
-
-        const open = prices[i]
-        const close = prices[i + 1] || prices[i]
-        const range = vol * (0.5 + Math.random())
-        const high = Math.max(open, close) + Math.random() * range
-        const low = Math.min(open, close) - Math.random() * range
-
-        data.push({
-            time: timestamp as Time,
-            open: parseFloat(open.toFixed(3)),
-            high: parseFloat(high.toFixed(3)),
-            low: parseFloat(low.toFixed(3)),
-            close: parseFloat(close.toFixed(3)),
-        })
-    }
-
-    return data
-}
-
 export function TradingChart({ currentBid, currentAsk }: TradingChartProps) {
     const chartContainerRef = useRef<HTMLDivElement>(null)
     const chartRef = useRef<ReturnType<typeof createChart> | null>(null)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const seriesRef = useRef<any>(null)
     const lastBarRef = useRef<{ time: number; open: number; high: number; low: number; close: number } | null>(null)
-    const historicalDataRef = useRef<CandlestickData<Time>[]>([])
+    const dataRef = useRef<CandlestickData<Time>[]>([])
     const isDisposedRef = useRef(false)
 
     const [chartType, setChartType] = useState<ChartType>("candlestick")
     const [timeframe, setTimeframe] = useState<Timeframe>("1m")
+
+    // タイムフレームに応じた現在のバー時刻を取得
+    const getCurrentBarTime = useCallback((tf: Timeframe) => {
+        const intervalSeconds = TIMEFRAME_SECONDS[tf]
+        const currentTime = Math.floor(Date.now() / 1000)
+        return Math.floor(currentTime / intervalSeconds) * intervalSeconds
+    }, [])
 
     // チャート作成関数
     const createChartInstance = useCallback(() => {
@@ -99,7 +54,7 @@ export function TradingChart({ currentBid, currentAsk }: TradingChartProps) {
                 horzLines: { color: "rgba(51, 65, 85, 0.5)" },
             },
             width: chartContainerRef.current.clientWidth,
-            height: 400,
+            height: 300,
             rightPriceScale: {
                 borderColor: "rgba(51, 65, 85, 0.8)",
                 scaleMargins: { top: 0.1, bottom: 0.1 },
@@ -116,8 +71,9 @@ export function TradingChart({ currentBid, currentAsk }: TradingChartProps) {
             },
         })
 
-        // タイムフレーム変更時は新しいデータを生成
-        historicalDataRef.current = generateHistoricalData(timeframe)
+        // 空のデータで開始
+        dataRef.current = []
+        lastBarRef.current = null
 
         let series
         if (chartType === "candlestick") {
@@ -129,29 +85,11 @@ export function TradingChart({ currentBid, currentAsk }: TradingChartProps) {
                 wickUpColor: "#22c55e",
                 wickDownColor: "#ef4444",
             })
-            series.setData(historicalDataRef.current)
         } else {
             series = chart.addSeries(LineSeries, {
                 color: "#3b82f6",
                 lineWidth: 2,
             })
-            const lineData = historicalDataRef.current.map(d => ({
-                time: d.time,
-                value: d.close,
-            }))
-            series.setData(lineData)
-        }
-
-        // 最新バーを記録
-        if (historicalDataRef.current.length > 0) {
-            const lastData = historicalDataRef.current[historicalDataRef.current.length - 1]
-            lastBarRef.current = {
-                time: lastData.time as number,
-                open: lastData.open,
-                high: lastData.high,
-                low: lastData.low,
-                close: lastData.close,
-            }
         }
 
         chartRef.current = chart
@@ -160,7 +98,7 @@ export function TradingChart({ currentBid, currentAsk }: TradingChartProps) {
         chart.timeScale().scrollToRealTime()
 
         return chart
-    }, [chartType, timeframe])
+    }, [chartType])
 
     // チャート初期化 & チャートタイプ/タイムフレーム切り替え
     useEffect(() => {
@@ -169,7 +107,7 @@ export function TradingChart({ currentBid, currentAsk }: TradingChartProps) {
         if (chartRef.current) {
             try {
                 chartRef.current.remove()
-            } catch (e) {
+            } catch {
                 // ignore
             }
             chartRef.current = null
@@ -191,7 +129,7 @@ export function TradingChart({ currentBid, currentAsk }: TradingChartProps) {
             if (chart) {
                 try {
                     chart.remove()
-                } catch (e) {
+                } catch {
                     // ignore
                 }
             }
@@ -200,22 +138,26 @@ export function TradingChart({ currentBid, currentAsk }: TradingChartProps) {
         }
     }, [chartType, timeframe, createChartInstance])
 
-    // リアルタイム更新（1分足のときのみ）
+    // リアルタイム更新
     useEffect(() => {
-        if (!seriesRef.current || !lastBarRef.current || isDisposedRef.current) return
-        if (timeframe !== "1m") return // 1分足以外はリアルタイム更新しない
+        if (!seriesRef.current || isDisposedRef.current) return
+        if (currentBid <= 0 || currentAsk <= 0) return // 有効な価格データがない場合はスキップ
 
+        const intervalSeconds = TIMEFRAME_SECONDS[timeframe]
         const currentTime = Math.floor(Date.now() / 1000)
-        const currentMinute = Math.floor(currentTime / 60) * 60
+        const currentBarTime = Math.floor(currentTime / intervalSeconds) * intervalSeconds
         const price = (currentBid + currentAsk) / 2
 
         try {
             if (chartType === "candlestick") {
-                if (currentMinute > lastBarRef.current.time) {
-                    const newBar = { time: currentMinute as Time, open: price, high: price, low: price, close: price }
+                if (!lastBarRef.current || currentBarTime > lastBarRef.current.time) {
+                    // 新しいバーを開始
+                    const newBar = { time: currentBarTime as Time, open: price, high: price, low: price, close: price }
                     seriesRef.current.update(newBar)
-                    lastBarRef.current = { time: currentMinute, open: price, high: price, low: price, close: price }
+                    lastBarRef.current = { time: currentBarTime, open: price, high: price, low: price, close: price }
+                    dataRef.current.push(newBar)
                 } else {
+                    // 現在のバーを更新
                     const updatedBar = {
                         time: lastBarRef.current.time as Time,
                         open: lastBarRef.current.open,
@@ -227,15 +169,16 @@ export function TradingChart({ currentBid, currentAsk }: TradingChartProps) {
                     lastBarRef.current = { ...lastBarRef.current, high: updatedBar.high, low: updatedBar.low, close: price }
                 }
             } else {
-                if (currentMinute > lastBarRef.current.time) {
-                    seriesRef.current.update({ time: currentMinute as Time, value: price })
-                    lastBarRef.current = { time: currentMinute, open: price, high: price, low: price, close: price }
+                // ラインチャート
+                if (!lastBarRef.current || currentBarTime > lastBarRef.current.time) {
+                    seriesRef.current.update({ time: currentBarTime as Time, value: price })
+                    lastBarRef.current = { time: currentBarTime, open: price, high: price, low: price, close: price }
                 } else {
                     seriesRef.current.update({ time: lastBarRef.current.time as Time, value: price })
                     lastBarRef.current = { ...lastBarRef.current, close: price }
                 }
             }
-        } catch (e) {
+        } catch {
             // ignore
         }
     }, [currentBid, currentAsk, chartType, timeframe])
@@ -286,3 +229,4 @@ export function TradingChart({ currentBid, currentAsk }: TradingChartProps) {
         </div>
     )
 }
+
