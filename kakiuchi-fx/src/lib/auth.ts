@@ -24,13 +24,7 @@ declare module "next-auth" {
     }
 }
 
-declare module "next-auth/jwt" {
-    interface JWT {
-        id: string
-        role: "USER" | "ADMIN"
-        kycStatus: string
-    }
-}
+// JWT types are included in next-auth module above
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
     providers: [
@@ -92,9 +86,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             return token
         },
         async session({ session, token }) {
-            session.user.id = token.id
-            session.user.role = token.role
-            session.user.kycStatus = token.kycStatus
+            session.user.id = token.id as string
+            session.user.role = token.role as "USER" | "ADMIN"
+            session.user.kycStatus = token.kycStatus as string
             return session
         },
     },
