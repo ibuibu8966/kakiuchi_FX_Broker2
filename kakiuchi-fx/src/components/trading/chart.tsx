@@ -158,8 +158,22 @@ export function TradingChart({ currentBid, currentAsk }: TradingChartProps) {
                 if (isDisposedRef.current || !seriesRef.current) return
 
                 if (data.length > 0) {
+                    // 異常な価格値をフィルタリング（GBPJPYは通常150-250の範囲）
+                    const validData = data.filter(d =>
+                        d.open >= 100 && d.open <= 300 &&
+                        d.high >= 100 && d.high <= 300 &&
+                        d.low >= 100 && d.low <= 300 &&
+                        d.close >= 100 && d.close <= 300
+                    )
+
+                    if (validData.length === 0) {
+                        console.warn('[Chart] No valid historical data after filtering')
+                        setIsLoading(false)
+                        return
+                    }
+
                     if (chartType === "candlestick") {
-                        const candleData: CandlestickData<Time>[] = data.map(d => ({
+                        const candleData: CandlestickData<Time>[] = validData.map(d => ({
                             time: d.time as Time,
                             open: d.open,
                             high: d.high,
@@ -169,7 +183,7 @@ export function TradingChart({ currentBid, currentAsk }: TradingChartProps) {
                         seriesRef.current.setData(candleData)
 
                         // 最後のバーを記憶
-                        const lastCandle = data[data.length - 1]
+                        const lastCandle = validData[validData.length - 1]
                         lastBarRef.current = {
                             time: lastCandle.time,
                             open: lastCandle.open,
@@ -178,13 +192,13 @@ export function TradingChart({ currentBid, currentAsk }: TradingChartProps) {
                             close: lastCandle.close,
                         }
                     } else {
-                        const lineData = data.map(d => ({
+                        const lineData = validData.map(d => ({
                             time: d.time as Time,
                             value: d.close,
                         }))
                         seriesRef.current.setData(lineData)
 
-                        const lastCandle = data[data.length - 1]
+                        const lastCandle = validData[validData.length - 1]
                         lastBarRef.current = {
                             time: lastCandle.time,
                             open: lastCandle.open,
@@ -228,10 +242,17 @@ export function TradingChart({ currentBid, currentAsk }: TradingChartProps) {
         if (!seriesRef.current || isDisposedRef.current) return
         if (currentBid <= 0 || currentAsk <= 0) return // 有効な価格データがない場合はスキップ
 
+        const price = (currentBid + currentAsk) / 2
+
+        // 異常な価格値をフィルタリング（GBPJPYは通常150-250の範囲）
+        if (price < 100 || price > 300) {
+            console.warn(`[Chart] Abnormal price detected: ${price}, skipping update`)
+            return
+        }
+
         const intervalSeconds = TIMEFRAME_SECONDS[timeframe]
         const currentTime = Math.floor(Date.now() / 1000)
         const currentBarTime = Math.floor(currentTime / intervalSeconds) * intervalSeconds
-        const price = (currentBid + currentAsk) / 2
 
         try {
             if (chartType === "candlestick") {
