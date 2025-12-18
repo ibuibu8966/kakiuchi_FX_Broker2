@@ -111,11 +111,21 @@ export function TradingChart({ currentBid, currentAsk }: TradingChartProps) {
                 borderDownColor: "#ef4444",
                 wickUpColor: "#22c55e",
                 wickDownColor: "#ef4444",
+                priceFormat: {
+                    type: "price",
+                    precision: 3,
+                    minMove: 0.001,
+                },
             })
         } else {
             series = chart.addSeries(LineSeries, {
                 color: "#3b82f6",
                 lineWidth: 2,
+                priceFormat: {
+                    type: "price",
+                    precision: 3,
+                    minMove: 0.001,
+                },
             })
         }
 
