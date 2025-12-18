@@ -265,6 +265,7 @@ model Trade {
 enum TradeType {
   OPEN
   CLOSE
+  LIQUIDATION
 }
 
 // ============================================

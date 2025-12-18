@@ -1,0 +1,2 @@
+-- AlterEnum
+ALTER TYPE "TradeType" ADD VALUE 'LIQUIDATION';

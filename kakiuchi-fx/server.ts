@@ -9,6 +9,7 @@ import next from "next"
 import { WebSocketServer, WebSocket } from "ws"
 import { connectToFIX, getCurrentPrice } from "./src/lib/fix-client"
 import { initOHLCCollector, onPriceUpdate as updateOHLC } from "./src/lib/ohlc-collector"
+import { startLosscutMonitor } from "./src/lib/losscut-service"
 
 const dev = process.env.NODE_ENV !== "production"
 const hostname = "localhost"
@@ -96,6 +97,10 @@ app.prepare().then(() => {
     // Initialize OHLC collector for background data collection
     initOHLCCollector()
     console.log("> OHLC Collector started - saving M1 candles to database")
+
+    // Start losscut monitor
+    startLosscutMonitor()
+    console.log("> Losscut Monitor started - checking margin levels every 5s")
 
     // Start FIX connection
     connectToFIX()
