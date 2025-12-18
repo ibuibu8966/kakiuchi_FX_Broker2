@@ -29,21 +29,26 @@ export async function GET() {
 
         // 含み損益をリアルタイム計算
         let unrealizedPnl = 0
-        const price = getCurrentPrice()
-        if (price && account.positions.length > 0) {
-            const bidBigInt = priceToBigInt(price.bid)
-            const askBigInt = priceToBigInt(price.ask)
+        try {
+            const price = getCurrentPrice()
+            if (price && account.positions.length > 0) {
+                const bidBigInt = priceToBigInt(price.bid)
+                const askBigInt = priceToBigInt(price.ask)
 
-            for (const pos of account.positions) {
-                const currentPriceBigInt = pos.side === "BUY" ? bidBigInt : askBigInt
-                const pnl = calculateUnrealizedPnl(
-                    pos.side as "BUY" | "SELL",
-                    pos.quantity,
-                    pos.entryPrice,
-                    currentPriceBigInt
-                )
-                unrealizedPnl += Number(pnl) / 10000
+                for (const pos of account.positions) {
+                    const currentPriceBigInt = pos.side === "BUY" ? bidBigInt : askBigInt
+                    const pnl = calculateUnrealizedPnl(
+                        pos.side as "BUY" | "SELL",
+                        pos.quantity,
+                        pos.entryPrice,
+                        currentPriceBigInt
+                    )
+                    unrealizedPnl += Number(pnl) / 10000
+                }
             }
+        } catch (priceError) {
+            console.warn("Failed to get current price for PnL calculation:", priceError)
+            // 価格取得に失敗しても続行（含み損益は0として計算）
         }
 
         // equity = balance + 含み損益
