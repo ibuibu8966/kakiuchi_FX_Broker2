@@ -8,6 +8,7 @@ import { parse } from "url"
 import next from "next"
 import { WebSocketServer, WebSocket } from "ws"
 import { connectToFIX, getCurrentPrice } from "./src/lib/fix-client"
+import { initOHLCCollector, onPriceUpdate as updateOHLC } from "./src/lib/ohlc-collector"
 
 const dev = process.env.NODE_ENV !== "production"
 const hostname = "localhost"
@@ -88,7 +89,13 @@ app.prepare().then(() => {
 
     (globalThis as Record<string, unknown>).onFIXPriceUpdate = (price: PriceQuote) => {
         broadcastPrice(price)
+        // Update OHLC collector with each price tick
+        updateOHLC(price)
     }
+
+    // Initialize OHLC collector for background data collection
+    initOHLCCollector()
+    console.log("> OHLC Collector started - saving M1 candles to database")
 
     // Start FIX connection
     connectToFIX()

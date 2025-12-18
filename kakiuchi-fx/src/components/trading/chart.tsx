@@ -21,23 +21,50 @@ const TIMEFRAME_SECONDS: Record<Timeframe, number> = {
     "1D": 86400,
 }
 
+// APIタイムフレームのマッピング
+const TIMEFRAME_API_MAP: Record<Timeframe, string> = {
+    "1m": "M1",
+    "5m": "M5",
+    "15m": "M15",
+    "1H": "H1",
+    "4H": "H4",
+    "1D": "D1",
+}
+
+interface OHLCData {
+    time: number
+    open: number
+    high: number
+    low: number
+    close: number
+}
+
 export function TradingChart({ currentBid, currentAsk }: TradingChartProps) {
     const chartContainerRef = useRef<HTMLDivElement>(null)
     const chartRef = useRef<ReturnType<typeof createChart> | null>(null)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const seriesRef = useRef<any>(null)
     const lastBarRef = useRef<{ time: number; open: number; high: number; low: number; close: number } | null>(null)
-    const dataRef = useRef<CandlestickData<Time>[]>([])
     const isDisposedRef = useRef(false)
+    const historicalLoadedRef = useRef(false)
 
     const [chartType, setChartType] = useState<ChartType>("candlestick")
     const [timeframe, setTimeframe] = useState<Timeframe>("1m")
+    const [isLoading, setIsLoading] = useState(false)
 
-    // タイムフレームに応じた現在のバー時刻を取得
-    const getCurrentBarTime = useCallback((tf: Timeframe) => {
-        const intervalSeconds = TIMEFRAME_SECONDS[tf]
-        const currentTime = Math.floor(Date.now() / 1000)
-        return Math.floor(currentTime / intervalSeconds) * intervalSeconds
+    // 履歴データを取得
+    const fetchHistoricalData = useCallback(async (tf: Timeframe): Promise<OHLCData[]> => {
+        try {
+            const apiTimeframe = TIMEFRAME_API_MAP[tf]
+            const res = await fetch(`/api/ohlc?symbol=GBPJPY&timeframe=${apiTimeframe}&limit=200`)
+            if (!res.ok) return []
+
+            const json = await res.json()
+            return json.data || []
+        } catch (error) {
+            console.error("Failed to fetch historical data:", error)
+            return []
+        }
     }, [])
 
     // チャート作成関数
@@ -71,9 +98,9 @@ export function TradingChart({ currentBid, currentAsk }: TradingChartProps) {
             },
         })
 
-        // 空のデータで開始
-        dataRef.current = []
+        // リセット
         lastBarRef.current = null
+        historicalLoadedRef.current = false
 
         let series
         if (chartType === "candlestick") {
@@ -95,8 +122,6 @@ export function TradingChart({ currentBid, currentAsk }: TradingChartProps) {
         chartRef.current = chart
         seriesRef.current = series
 
-        chart.timeScale().scrollToRealTime()
-
         return chart
     }, [chartType])
 
@@ -115,6 +140,56 @@ export function TradingChart({ currentBid, currentAsk }: TradingChartProps) {
         }
 
         const chart = createChartInstance()
+
+        // 履歴データを読み込み
+        if (chart && seriesRef.current) {
+            setIsLoading(true)
+            fetchHistoricalData(timeframe).then((data) => {
+                if (isDisposedRef.current || !seriesRef.current) return
+
+                if (data.length > 0) {
+                    if (chartType === "candlestick") {
+                        const candleData: CandlestickData<Time>[] = data.map(d => ({
+                            time: d.time as Time,
+                            open: d.open,
+                            high: d.high,
+                            low: d.low,
+                            close: d.close,
+                        }))
+                        seriesRef.current.setData(candleData)
+
+                        // 最後のバーを記憶
+                        const lastCandle = data[data.length - 1]
+                        lastBarRef.current = {
+                            time: lastCandle.time,
+                            open: lastCandle.open,
+                            high: lastCandle.high,
+                            low: lastCandle.low,
+                            close: lastCandle.close,
+                        }
+                    } else {
+                        const lineData = data.map(d => ({
+                            time: d.time as Time,
+                            value: d.close,
+                        }))
+                        seriesRef.current.setData(lineData)
+
+                        const lastCandle = data[data.length - 1]
+                        lastBarRef.current = {
+                            time: lastCandle.time,
+                            open: lastCandle.open,
+                            high: lastCandle.high,
+                            low: lastCandle.low,
+                            close: lastCandle.close,
+                        }
+                    }
+
+                    historicalLoadedRef.current = true
+                    chart.timeScale().scrollToRealTime()
+                }
+                setIsLoading(false)
+            })
+        }
 
         const handleResize = () => {
             if (chartContainerRef.current && chartRef.current && !isDisposedRef.current) {
@@ -136,7 +211,7 @@ export function TradingChart({ currentBid, currentAsk }: TradingChartProps) {
             chartRef.current = null
             seriesRef.current = null
         }
-    }, [chartType, timeframe, createChartInstance])
+    }, [chartType, timeframe, createChartInstance, fetchHistoricalData])
 
     // リアルタイム更新
     useEffect(() => {
@@ -155,7 +230,6 @@ export function TradingChart({ currentBid, currentAsk }: TradingChartProps) {
                     const newBar = { time: currentBarTime as Time, open: price, high: price, low: price, close: price }
                     seriesRef.current.update(newBar)
                     lastBarRef.current = { time: currentBarTime, open: price, high: price, low: price, close: price }
-                    dataRef.current.push(newBar)
                 } else {
                     // 現在のバーを更新
                     const updatedBar = {
@@ -188,6 +262,13 @@ export function TradingChart({ currentBid, currentAsk }: TradingChartProps) {
     return (
         <div className="relative">
             <div ref={chartContainerRef} className="w-full" />
+
+            {/* ローディングインジケータ */}
+            {isLoading && (
+                <div className="absolute inset-0 flex items-center justify-center bg-slate-900/50 z-20">
+                    <div className="text-slate-400 text-sm">読み込み中...</div>
+                </div>
+            )}
 
             {/* タイムフレームセレクタ */}
             <div className="absolute top-2 left-2 flex gap-1 z-10">
@@ -229,4 +310,3 @@ export function TradingChart({ currentBid, currentAsk }: TradingChartProps) {
         </div>
     )
 }
-
