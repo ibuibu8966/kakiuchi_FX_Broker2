@@ -85,7 +85,7 @@ async function executeOrder(
         quantity: bigint
         stopLoss: bigint | null
         takeProfit: bigint | null
-        account: { id: string; userId: true; balance: bigint; usedMargin: bigint; leverage: number }
+        account: { id: string; userId: string; balance: bigint; usedMargin: bigint; leverage: number }
     },
     currentPrice: { bid: number; ask: number }
 ) {
@@ -120,7 +120,7 @@ async function executeOrder(
                 data: {
                     accountId: order.accountId,
                     symbol: order.symbol,
-                    side: order.side,
+                    side: order.side as "BUY" | "SELL",
                     quantity: order.quantity,
                     entryPrice: executionPriceBigInt,
                     stopLoss: order.stopLoss,
@@ -150,7 +150,7 @@ async function executeOrder(
                     orderId: order.id,
                     positionId: position.id,
                     symbol: order.symbol,
-                    side: order.side,
+                    side: order.side as "BUY" | "SELL",
                     tradeType: "OPEN",
                     quantity: order.quantity,
                     price: executionPriceBigInt,
