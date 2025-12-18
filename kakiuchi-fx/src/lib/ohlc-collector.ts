@@ -3,10 +3,20 @@
  * バックグラウンドで1分足OHLCデータを収集・保存
  */
 
-import { PrismaClient, Timeframe } from "@prisma/client"
+import { Timeframe, PrismaClient } from "@prisma/client"
 
-// Prisma client instance
-const prisma = new PrismaClient()
+// グローバルにキャッシュしたPrismaClient（開発時のホットリロード対策）
+const globalForPrisma = globalThis as unknown as {
+    ohlcPrisma: PrismaClient | undefined
+}
+
+const prisma = globalForPrisma.ohlcPrisma ?? new PrismaClient({
+    log: ['error'],
+})
+
+if (process.env.NODE_ENV !== 'production') {
+    globalForPrisma.ohlcPrisma = prisma
+}
 
 interface PriceQuote {
     symbol: string
