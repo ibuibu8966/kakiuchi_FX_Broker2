@@ -117,14 +117,33 @@ export async function GET(request: NextRequest) {
         const minutes = TIMEFRAME_MINUTES[timeframe]
         const requiredM1Candles = limit * minutes
 
-        const m1Data = await prisma.priceData.findMany({
-            where: {
+        let m1Data: Array<{
+            timestamp: Date
+            open: bigint
+            high: bigint
+            low: bigint
+            close: bigint
+        }> = []
+
+        try {
+            m1Data = await prisma.priceData.findMany({
+                where: {
+                    symbol,
+                    timeframe: Timeframe.M1,
+                },
+                orderBy: { timestamp: "desc" },
+                take: requiredM1Candles,
+            })
+        } catch (dbError) {
+            console.error("Database error in OHLC API:", dbError)
+            // データベースエラー時は空データを返す
+            return NextResponse.json({
                 symbol,
-                timeframe: Timeframe.M1,
-            },
-            orderBy: { timestamp: "desc" },
-            take: requiredM1Candles,
-        })
+                timeframe: tfParam,
+                count: 0,
+                data: [],
+            })
+        }
 
         // OHLCフォーマットに変換
         const m1Candles: OHLC[] = m1Data.map(d => ({
@@ -151,6 +170,12 @@ export async function GET(request: NextRequest) {
         })
     } catch (error) {
         console.error("OHLC API error:", error)
-        return NextResponse.json({ error: "Failed to fetch OHLC data" }, { status: 500 })
+        // 致命的エラー時も空データを返す（500エラーを回避）
+        return NextResponse.json({
+            symbol: "GBPJPY",
+            timeframe: "M1",
+            count: 0,
+            data: [],
+        })
     }
 }
