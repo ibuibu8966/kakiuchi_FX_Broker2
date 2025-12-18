@@ -34,27 +34,41 @@ export async function POST(request: Request) {
             )
         }
 
-        // 口座取得
+        // 口座取得（ポジションも含めて含み損益を計算）
         const account = await prisma.account.findFirst({
             where: { userId: session.user.id },
+            include: {
+                positions: {
+                    where: { status: "OPEN" },
+                },
+            },
         })
 
         if (!account) {
             return NextResponse.json({ error: "口座がありません" }, { status: 400 })
         }
 
-        // 出金の場合は残高チェック
+        // 出金の場合は余剰証拠金チェック（含み損益を考慮）
         if (type === "WITHDRAWAL") {
             if (!walletAddress) {
                 return NextResponse.json({ error: "ウォレットアドレスが必要です" }, { status: 400 })
             }
 
             const amountBigInt = amountToBigInt(amount)
-            const freeMargin = account.balance - account.usedMargin
+
+            // 有効証拠金 = 残高 + 含み損益
+            // 含み損益はポジションのrealizedPnlがnullの場合、現在価格から計算が必要
+            // 簡易的にはDBに保存されているequityを使用
+            const equity = account.equity
+            const usedMargin = account.usedMargin
+
+            // 余剰証拠金 = 有効証拠金 - 使用証拠金
+            const freeMargin = equity - usedMargin
 
             if (amountBigInt > freeMargin) {
+                const freeMarginJpy = Number(freeMargin) / 100
                 return NextResponse.json(
-                    { error: "出金可能額を超えています" },
+                    { error: `出金可能額を超えています。現在の出金可能額: ${freeMarginJpy.toLocaleString()}円` },
                     { status: 400 }
                 )
             }

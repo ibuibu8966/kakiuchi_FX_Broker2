@@ -1,9 +1,16 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+
+interface AccountData {
+    balance: number
+    equity: number
+    usedMargin: number
+    freeMargin: number
+}
 
 export default function WithdrawPage() {
     const [formData, setFormData] = useState({
@@ -13,6 +20,23 @@ export default function WithdrawPage() {
     })
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
+    const [accountData, setAccountData] = useState<AccountData | null>(null)
+
+    // 口座情報を取得して出金可能額を表示
+    useEffect(() => {
+        const fetchAccount = async () => {
+            try {
+                const res = await fetch("/api/account")
+                if (res.ok) {
+                    const data = await res.json()
+                    setAccountData(data)
+                }
+            } catch (error) {
+                console.error("Failed to fetch account data:", error)
+            }
+        }
+        fetchAccount()
+    }, [])
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         setFormData(prev => ({
@@ -73,6 +97,31 @@ export default function WithdrawPage() {
                     <CardTitle className="text-white">出金申請</CardTitle>
                 </CardHeader>
                 <CardContent>
+                    {/* 出金可能額の表示 */}
+                    {accountData && (
+                        <div className="mb-6 p-4 rounded-lg bg-slate-800/50 border border-slate-700">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <p className="text-xs text-slate-400">有効証拠金</p>
+                                    <p className="text-lg font-bold text-white">
+                                        ¥{accountData.equity.toLocaleString()}
+                                    </p>
+                                </div>
+                                <div>
+                                    <p className="text-xs text-slate-400">出金可能額</p>
+                                    <p className="text-lg font-bold text-green-400">
+                                        ¥{accountData.freeMargin.toLocaleString()}
+                                    </p>
+                                </div>
+                            </div>
+                            {accountData.usedMargin > 0 && (
+                                <p className="text-xs text-yellow-400 mt-2">
+                                    ※ ポジション保有中のため、余剰証拠金の範囲内で出金可能です
+                                </p>
+                            )}
+                        </div>
+                    )}
+
                     <form onSubmit={handleSubmit} className="space-y-4">
                         <div>
                             <label className="text-sm text-slate-400 block mb-2">出金額（USDT）</label>
