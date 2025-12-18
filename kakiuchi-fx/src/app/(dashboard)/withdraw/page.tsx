@@ -104,13 +104,13 @@ export default function WithdrawPage() {
                                 <div>
                                     <p className="text-xs text-slate-400">有効証拠金</p>
                                     <p className="text-lg font-bold text-white">
-                                        ¥{accountData.equity.toLocaleString()}
+                                        {(accountData.equity / 150).toFixed(2)} USDT
                                     </p>
                                 </div>
                                 <div>
                                     <p className="text-xs text-slate-400">出金可能額</p>
                                     <p className="text-lg font-bold text-green-400">
-                                        ¥{accountData.freeMargin.toLocaleString()}
+                                        {(accountData.freeMargin / 150).toFixed(2)} USDT
                                     </p>
                                 </div>
                             </div>

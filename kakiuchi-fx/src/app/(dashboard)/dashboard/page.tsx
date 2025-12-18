@@ -67,7 +67,7 @@ export default async function DashboardPage() {
                     </CardHeader>
                     <CardContent>
                         <p className="text-2xl font-bold text-white">{formatAmount(balance, false)}</p>
-                        <p className="text-xs text-slate-500">JPY</p>
+                        <p className="text-xs text-slate-500">USDT</p>
                     </CardContent>
                 </Card>
 
@@ -77,7 +77,7 @@ export default async function DashboardPage() {
                     </CardHeader>
                     <CardContent>
                         <p className="text-2xl font-bold text-white">{formatAmount(equity, false)}</p>
-                        <p className="text-xs text-slate-500">JPY</p>
+                        <p className="text-xs text-slate-500">USDT</p>
                     </CardContent>
                 </Card>
 
@@ -87,7 +87,7 @@ export default async function DashboardPage() {
                     </CardHeader>
                     <CardContent>
                         <p className="text-2xl font-bold text-green-400">{formatAmount(freeMargin, false)}</p>
-                        <p className="text-xs text-slate-500">JPY</p>
+                        <p className="text-xs text-slate-500">USDT</p>
                     </CardContent>
                 </Card>
 

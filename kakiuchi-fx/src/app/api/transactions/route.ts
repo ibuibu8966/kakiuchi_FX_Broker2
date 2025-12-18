@@ -66,9 +66,10 @@ export async function POST(request: Request) {
             const freeMargin = equity - usedMargin
 
             if (amountBigInt > freeMargin) {
-                const freeMarginJpy = Number(freeMargin) / 100
+                // freeMarginは×100の日本円表記なので、USDTに換算（仮レート: 1 USDT = 150円）
+                const freeMarginUsdt = (Number(freeMargin) / 100 / 150).toFixed(2)
                 return NextResponse.json(
-                    { error: `出金可能額を超えています。現在の出金可能額: ${freeMarginJpy.toLocaleString()}円` },
+                    { error: `出金可能額を超えています。現在の出金可能額: 約${freeMarginUsdt} USDT` },
                     { status: 400 }
                 )
             }

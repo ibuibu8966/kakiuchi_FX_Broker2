@@ -112,7 +112,7 @@ export default function AdminSettingsPage() {
                     <CardContent className="space-y-4">
                         <div>
                             <label className="text-sm text-slate-400 block mb-2">
-                                取引手数料（円/ロット）
+                                取引手数料（USDT/ロット）
                             </label>
                             <Input
                                 type="number"
@@ -156,8 +156,8 @@ export default function AdminSettingsPage() {
                 {/* 保存ボタン */}
                 {message && (
                     <div className={`p-3 rounded-lg text-sm ${message.type === "success"
-                            ? "bg-green-500/10 text-green-400 border border-green-500/20"
-                            : "bg-red-500/10 text-red-400 border border-red-500/20"
+                        ? "bg-green-500/10 text-green-400 border border-green-500/20"
+                        : "bg-red-500/10 text-red-400 border border-red-500/20"
                         }`}>
                         {message.text}
                     </div>
