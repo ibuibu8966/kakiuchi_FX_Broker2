@@ -240,8 +240,8 @@ model Trade {
   id              String    @id @default(cuid())
   accountId       String
   account         Account   @relation(fields: [accountId], references: [id], onDelete: Cascade)
-  orderId         String
-  order           Order     @relation(fields: [orderId], references: [id])
+  orderId         String?   // Optional - may be null for TP/SL closes
+  order           Order?    @relation(fields: [orderId], references: [id])
   positionId      String?
   position        Position? @relation(fields: [positionId], references: [id])
 
