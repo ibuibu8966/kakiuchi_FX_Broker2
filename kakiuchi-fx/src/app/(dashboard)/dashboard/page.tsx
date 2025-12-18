@@ -108,11 +108,8 @@ export default async function DashboardPage() {
             <div className="grid gap-6 lg:grid-cols-2">
                 {/* ポジション */}
                 <Card className="bg-slate-900/50 border-slate-800">
-                    <CardHeader className="flex flex-row items-center justify-between">
+                    <CardHeader>
                         <CardTitle className="text-lg text-white">アクティブポジション</CardTitle>
-                        <Link href="/positions" className="text-sm text-blue-400 hover:text-blue-300">
-                            すべて見る →
-                        </Link>
                     </CardHeader>
                     <CardContent>
                         {account?.positions && account.positions.length > 0 ? (
@@ -150,11 +147,8 @@ export default async function DashboardPage() {
 
                 {/* 最近の取引 */}
                 <Card className="bg-slate-900/50 border-slate-800">
-                    <CardHeader className="flex flex-row items-center justify-between">
+                    <CardHeader>
                         <CardTitle className="text-lg text-white">最近の取引</CardTitle>
-                        <Link href="/history" className="text-sm text-blue-400 hover:text-blue-300">
-                            すべて見る →
-                        </Link>
                     </CardHeader>
                     <CardContent>
                         {account?.trades && account.trades.length > 0 ? (
