@@ -216,11 +216,14 @@ export async function DELETE(
                 }
             })
 
-            // 口座残高更新（証拠金解放 + 損益反映）
+            // 口座残高更新（証拠金解放 + USD建て損益反映）
+            // pnlはJPY ×100、残高はUSD ×100なので、USD損益をBigIntに変換
+            const pnlUsdBigInt = BigInt(Math.round(realizedPnlUsdt * 100))
+
             await tx.account.update({
                 where: { id: position.account.id },
                 data: {
-                    balance: { increment: pnl },
+                    balance: { increment: pnlUsdBigInt },
                     usedMargin: { decrement: position.margin },
                 }
             })

@@ -91,16 +91,19 @@ export async function POST(request: Request) {
         const stopLossBigInt = stopLoss ? priceToBigInt(stopLoss) : null
         const takeProfitBigInt = takeProfit ? priceToBigInt(takeProfit) : null
 
-        // 必要証拠金計算
-        const requiredMargin = calculateRequiredMargin(
+        // 必要証拠金計算（JPYで計算後、USDに換算）
+        const usdJpyRate = getUsdJpyRate()
+        const requiredMarginJpy = calculateRequiredMargin(
             quantityBigInt,
             executionPriceBigInt,
             account.leverage
         )
+        // JPY証拠金をUSD証拠金に変換（×100形式を維持）
+        const requiredMarginUsd = BigInt(Math.round(Number(requiredMarginJpy) / usdJpyRate))
 
-        // 余剰証拠金チェック
+        // 余剰証拠金チェック（USD基準）
         const freeMargin = account.balance - account.usedMargin
-        if (freeMargin < requiredMargin) {
+        if (freeMargin < requiredMarginUsd) {
             return NextResponse.json(
                 { error: "証拠金が不足しています" },
                 { status: 400 }
@@ -121,9 +124,9 @@ export async function POST(request: Request) {
                         entryPrice: executionPriceBigInt,
                         stopLoss: stopLossBigInt,
                         takeProfit: takeProfitBigInt,
-                        margin: requiredMargin,
+                        margin: requiredMarginUsd,
                         status: "OPEN",
-                        entryUsdJpyRate: getUsdJpyRate(), // USDT換算用レート
+                        entryUsdJpyRate: usdJpyRate, // USDT換算用レート
                     },
                 })
 
@@ -160,11 +163,11 @@ export async function POST(request: Request) {
                     },
                 })
 
-                // 口座の証拠金を更新
+                // 口座の証拠金を更新（USD基準）
                 await tx.account.update({
                     where: { id: account.id },
                     data: {
-                        usedMargin: { increment: requiredMargin },
+                        usedMargin: { increment: requiredMarginUsd },
                     },
                 })
 
