@@ -9,7 +9,7 @@ import next from "next"
 import { WebSocketServer, WebSocket } from "ws"
 import { connectToFIX, getCurrentPrice } from "./src/lib/fix-client"
 import { initOHLCCollector, onPriceUpdate as updateOHLC } from "./src/lib/ohlc-collector"
-import { startLosscutMonitor } from "./src/lib/losscut-service"
+import { startLosscutMonitor, onPriceUpdateLosscut } from "./src/lib/losscut-service"
 
 const dev = process.env.NODE_ENV !== "production"
 const hostname = "localhost"
@@ -92,6 +92,8 @@ app.prepare().then(() => {
         broadcastPrice(price)
         // Update OHLC collector with each price tick
         updateOHLC(price)
+        // Real-time losscut check on every price update
+        onPriceUpdateLosscut(price)
     }
 
     // Initialize OHLC collector for background data collection

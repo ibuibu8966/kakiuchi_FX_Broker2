@@ -8,24 +8,26 @@ import { getCurrentPrice, getUsdJpyRate } from "./fix-client"
 import { calculateUnrealizedPnl, bigIntToAmount, priceToBigInt } from "./utils/bigint"
 
 const LOSSCUT_THRESHOLD = 20 // 証拠金維持率20%以下でロスカット
-const CHECK_INTERVAL = 5000  // 5秒ごとにチェック
+
+// 処理中フラグ（重複実行防止）
+let isChecking = false
 
 /**
- * ロスカット監視を開始
+ * ロスカット監視を開始（ログ出力のみ）
  */
 export function startLosscutMonitor() {
-    console.log("Losscut: Monitor started (threshold: " + LOSSCUT_THRESHOLD + "%)")
-    setInterval(checkAllAccounts, CHECK_INTERVAL)
+    console.log("Losscut: Monitor started (threshold: " + LOSSCUT_THRESHOLD + "%, real-time)")
 }
 
 /**
- * 全口座をチェック
+ * 価格更新時にロスカットチェック（リアルタイム）
  */
-async function checkAllAccounts() {
-    try {
-        const currentPrice = getCurrentPrice()
-        if (!currentPrice) return // 価格が取得できない場合はスキップ
+export async function onPriceUpdateLosscut(currentPrice: { bid: number; ask: number }) {
+    // 処理中なら重複しない
+    if (isChecking) return
+    isChecking = true
 
+    try {
         // オープンポジションがある口座を取得
         const accounts = await prisma.account.findMany({
             where: {
@@ -47,6 +49,8 @@ async function checkAllAccounts() {
         }
     } catch (error) {
         console.error("Losscut check error:", error)
+    } finally {
+        isChecking = false
     }
 }
 
