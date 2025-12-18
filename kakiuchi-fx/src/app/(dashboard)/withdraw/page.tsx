@@ -21,21 +21,33 @@ export default function WithdrawPage() {
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
     const [accountData, setAccountData] = useState<AccountData | null>(null)
+    const [usdJpyRate, setUsdJpyRate] = useState<number>(150) // デフォルト値
 
-    // 口座情報を取得して出金可能額を表示
+    // 口座情報とレートを取得
     useEffect(() => {
-        const fetchAccount = async () => {
+        const fetchData = async () => {
             try {
-                const res = await fetch("/api/account")
-                if (res.ok) {
-                    const data = await res.json()
+                const [accountRes, rateRes] = await Promise.all([
+                    fetch("/api/account"),
+                    fetch("/api/rate"),
+                ])
+
+                if (accountRes.ok) {
+                    const data = await accountRes.json()
                     setAccountData(data)
                 }
+
+                if (rateRes.ok) {
+                    const rateData = await rateRes.json()
+                    if (rateData.usdJpy) {
+                        setUsdJpyRate(rateData.usdJpy)
+                    }
+                }
             } catch (error) {
-                console.error("Failed to fetch account data:", error)
+                console.error("Failed to fetch data:", error)
             }
         }
-        fetchAccount()
+        fetchData()
     }, [])
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -104,13 +116,13 @@ export default function WithdrawPage() {
                                 <div>
                                     <p className="text-xs text-slate-400">有効証拠金</p>
                                     <p className="text-lg font-bold text-white">
-                                        {(accountData.equity / 150).toFixed(2)} USDT
+                                        {(accountData.equity / usdJpyRate).toFixed(2)} USDT
                                     </p>
                                 </div>
                                 <div>
                                     <p className="text-xs text-slate-400">出金可能額</p>
                                     <p className="text-lg font-bold text-green-400">
-                                        {(accountData.freeMargin / 150).toFixed(2)} USDT
+                                        {(accountData.freeMargin / usdJpyRate).toFixed(2)} USDT
                                     </p>
                                 </div>
                             </div>

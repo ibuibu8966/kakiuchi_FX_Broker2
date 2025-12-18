@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { lotToBigInt, priceToBigInt, calculateRequiredMargin } from "@/lib/utils/bigint"
-import { getCurrentPrice } from "@/lib/fix-client"
+import { getCurrentPrice, getUsdJpyRate } from "@/lib/fix-client"
 
 // リアルタイム価格を取得
 async function getExecutionPrice() {
@@ -123,6 +123,7 @@ export async function POST(request: Request) {
                         takeProfit: takeProfitBigInt,
                         margin: requiredMargin,
                         status: "OPEN",
+                        entryUsdJpyRate: getUsdJpyRate(), // USDT換算用レート
                     },
                 })
 

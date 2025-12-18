@@ -24,6 +24,7 @@ interface FIXConfig {
 }
 
 let cachedPrice: PriceQuote | null = null
+let cachedUsdJpyRate: number | null = null  // USD/JPY rate for USDT conversion
 let lastUpdateTime: Date | null = null
 let connectionAttempted = false
 let msgSeqNum = 1
@@ -140,14 +141,14 @@ export async function connectToFIX(): Promise<void> {
             }
 
             if (msgType === "A") {
-                console.log("FIX: Logon OK - subscribing to GBPJPY (Symbol ID 7)")
+                console.log("FIX: Logon OK - subscribing to GBPJPY (7) and USDJPY (4)")
                 const SOH = "\x01"
                 const now = new Date()
                 const pad = (n: number, len = 2) => n.toString().padStart(len, "0")
                 const ts = `${now.getUTCFullYear()}${pad(now.getUTCMonth() + 1)}${pad(now.getUTCDate())}-${pad(now.getUTCHours())}:${pad(now.getUTCMinutes())}:${pad(now.getUTCSeconds())}.${pad(now.getUTCMilliseconds(), 3)}`
 
-                // GBPJPY = Symbol ID 7
-                const body = [
+                // Subscribe to GBPJPY (Symbol ID 7)
+                const bodyGbpjpy = [
                     `35=V`,
                     `49=${config.senderCompID}`,
                     `56=${config.targetCompID}`,
@@ -165,12 +166,39 @@ export async function connectToFIX(): Promise<void> {
                     `55=7`,
                 ].join(SOH) + SOH
 
-                const bodyLen = Buffer.byteLength(body, "utf8")
-                const hdr = `8=FIX.4.4${SOH}9=${bodyLen}${SOH}`
-                const msg = hdr + body
-                const chk = calculateChecksum(msg)
-                socket.write(msg + `10=${chk}${SOH}`)
+                const bodyLenGbpjpy = Buffer.byteLength(bodyGbpjpy, "utf8")
+                const hdrGbpjpy = `8=FIX.4.4${SOH}9=${bodyLenGbpjpy}${SOH}`
+                const msgGbpjpy = hdrGbpjpy + bodyGbpjpy
+                const chkGbpjpy = calculateChecksum(msgGbpjpy)
+                socket.write(msgGbpjpy + `10=${chkGbpjpy}${SOH}`)
                 console.log("FIX: Subscribed to GBPJPY")
+
+                // Subscribe to USDJPY (Symbol ID 4) - for USDT conversion
+                const ts2 = `${now.getUTCFullYear()}${pad(now.getUTCMonth() + 1)}${pad(now.getUTCDate())}-${pad(now.getUTCHours())}:${pad(now.getUTCMinutes())}:${pad(now.getUTCSeconds())}.${pad(now.getUTCMilliseconds() + 1, 3)}`
+                const bodyUsdjpy = [
+                    `35=V`,
+                    `49=${config.senderCompID}`,
+                    `56=${config.targetCompID}`,
+                    `50=${config.senderSubID}`,
+                    `57=${config.senderSubID}`,
+                    `34=${msgSeqNum++}`,
+                    `52=${ts2}`,
+                    `262=MDR_USDJPY`,
+                    `263=1`,
+                    `264=0`,
+                    `267=2`,
+                    `269=0`,
+                    `269=1`,
+                    `146=1`,
+                    `55=4`,
+                ].join(SOH) + SOH
+
+                const bodyLenUsdjpy = Buffer.byteLength(bodyUsdjpy, "utf8")
+                const hdrUsdjpy = `8=FIX.4.4${SOH}9=${bodyLenUsdjpy}${SOH}`
+                const msgUsdjpy = hdrUsdjpy + bodyUsdjpy
+                const chkUsdjpy = calculateChecksum(msgUsdjpy)
+                socket.write(msgUsdjpy + `10=${chkUsdjpy}${SOH}`)
+                console.log("FIX: Subscribed to USDJPY")
             } else if (msgType === "W" || msgType === "X") {
                 const sym = fields["55"] || "?"
 
@@ -219,6 +247,14 @@ export async function connectToFIX(): Promise<void> {
                         ((globalThis as Record<string, unknown>).onFIXPriceUpdate as (price: PriceQuote) => void)(cachedPrice)
                     }
                 }
+
+                // Symbol ID 4 = USDJPY (for USDT conversion)
+                if (sym === "4" && (bid > 0 || ask > 0)) {
+                    const midRate = bid > 0 && ask > 0 ? (bid + ask) / 2 : (bid || ask)
+                    if (midRate > 100 && midRate < 200) { // USDJPYの妥当な範囲
+                        cachedUsdJpyRate = midRate
+                    }
+                }
             } else if (msgType === "0") {
                 socket.write(buildFIXMessage("0", {}, config))
             }
@@ -259,4 +295,20 @@ export function getCurrentPrice(): PriceQuote | null {
     // mock または デフォルト（未設定時）
     const bid = 207.8 + (Math.random() - 0.5) * 0.1
     return { symbol: "GBPJPY", bid: Math.round(bid * 1000) / 1000, ask: Math.round((bid + 0.02) * 1000) / 1000, timestamp: new Date() }
+}
+
+/**
+ * Get current USD/JPY rate for USDT conversion
+ * Returns cached rate from FIX or fallback rate (150)
+ */
+export function getUsdJpyRate(): number {
+    const mode = process.env.PRICE_FEED_MODE
+    if (mode === "fix") {
+        connectToFIX()
+        if (cachedUsdJpyRate && cachedUsdJpyRate > 100) {
+            return cachedUsdJpyRate
+        }
+    }
+    // Fallback rate if FIX not available
+    return 150.0
 }

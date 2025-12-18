@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { priceToBigInt, bigIntToAmount, calculateUnrealizedPnl } from "@/lib/utils/bigint"
-import { getCurrentPrice } from "@/lib/fix-client"
+import { getCurrentPrice, getUsdJpyRate } from "@/lib/fix-client"
 
 // リアルタイム価格を取得
 function getExecutionPrice() {
@@ -167,6 +167,10 @@ export async function DELETE(
         )
 
         // トランザクションで決済処理
+        const closeUsdJpyRate = getUsdJpyRate()
+        const pnlJpy = bigIntToAmount(pnl)  // 円建ての損益
+        const realizedPnlUsdt = pnlJpy / closeUsdJpyRate  // USDT建ての損益
+
         const result = await prisma.$transaction(async (tx) => {
             // ポジションをクローズ
             const closedPosition = await tx.position.update({
@@ -175,6 +179,8 @@ export async function DELETE(
                     status: "CLOSED",
                     closePrice: closePriceBigInt,
                     realizedPnl: pnl,
+                    closeUsdJpyRate: closeUsdJpyRate,  // 決済時のUSD/JPYレート
+                    realizedPnlUsdt: realizedPnlUsdt,  // USDT建て損益
                     closedAt: new Date(),
                 }
             })

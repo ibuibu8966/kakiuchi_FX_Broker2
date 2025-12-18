@@ -209,6 +209,11 @@ model Position {
   closePrice      BigInt?
   realizedPnl     BigInt?
 
+  // USD/JPYレート（USDT換算用）
+  entryUsdJpyRate  Float?        // ポジション建て時のUSD/JPYレート
+  closeUsdJpyRate  Float?        // 決済時のUSD/JPYレート
+  realizedPnlUsdt  Float?        // USDT建て確定損益
+
   openedAt        DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
   closedAt        DateTime?
