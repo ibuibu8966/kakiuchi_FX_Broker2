@@ -93,9 +93,19 @@ async function saveCandle(candle: OHLCCandle): Promise<void> {
  * 価格更新を受け取り1分足を集計
  */
 export function onPriceUpdate(price: PriceQuote): void {
-    if (!isInitialized) return
+    if (!isInitialized) {
+        console.log("OHLC: Not initialized, skipping price update")
+        return
+    }
 
     const midPrice = (price.bid + price.ask) / 2
+
+    // 異常な価格値をフィルタリング
+    if (midPrice < 100 || midPrice > 300) {
+        console.warn(`OHLC: Abnormal price detected: ${midPrice} (bid=${price.bid}, ask=${price.ask}), skipping`)
+        return
+    }
+
     const currentMinute = getMinuteStart(price.timestamp)
 
     if (!currentCandle) {
@@ -109,12 +119,14 @@ export function onPriceUpdate(price: PriceQuote): void {
             volume: 1,
             timestamp: currentMinute,
         }
+        console.log(`OHLC: Started new candle for ${price.symbol} at ${currentMinute.toISOString()}, price=${midPrice}`)
         return
     }
 
     // 新しい分になったか確認
     if (currentMinute.getTime() > currentCandle.timestamp.getTime()) {
         // 前の足を保存
+        console.log(`OHLC: Saving completed candle - O:${currentCandle.open} H:${currentCandle.high} L:${currentCandle.low} C:${currentCandle.close}`)
         saveCandle(currentCandle)
         lastSaveTime = new Date()
 

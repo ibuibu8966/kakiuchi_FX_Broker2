@@ -66,8 +66,9 @@ export async function GET() {
         })
     } catch (error) {
         console.error("Get account error:", error)
+        const errorMessage = error instanceof Error ? error.message : String(error)
         return NextResponse.json(
-            { error: "口座情報の取得に失敗しました" },
+            { error: "口座情報の取得に失敗しました", details: errorMessage },
             { status: 500 }
         )
     }

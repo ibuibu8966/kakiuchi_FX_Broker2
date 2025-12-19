@@ -66,8 +66,9 @@ export async function GET() {
         return NextResponse.json({ positions, pendingOrders, closedPositions })
     } catch (error) {
         console.error("Get positions summary error:", error)
+        const errorMessage = error instanceof Error ? error.message : String(error)
         return NextResponse.json(
-            { error: "ポジション情報の取得に失敗しました" },
+            { error: "ポジション情報の取得に失敗しました", details: errorMessage },
             { status: 500 }
         )
     }
