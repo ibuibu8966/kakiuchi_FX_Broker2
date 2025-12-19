@@ -234,6 +234,16 @@ export async function connectToFIX(): Promise<void> {
                     if (bid > 0 && ask === 0) ask = bid
                     if (ask > 0 && bid === 0) bid = ask
 
+                    // 急激な価格変動チェック（前回価格から5円以上の変動は異常とみなす）
+                    if (cachedPrice && cachedPrice.bid > 0) {
+                        const bidChange = Math.abs(bid - cachedPrice.bid)
+                        const askChange = Math.abs(ask - cachedPrice.ask)
+                        if (bidChange > 5 || askChange > 5) {
+                            console.warn(`FIX: Abnormal price change detected! Bid: ${cachedPrice.bid} -> ${bid} (${bidChange.toFixed(3)}), Ask: ${cachedPrice.ask} -> ${ask} (${askChange.toFixed(3)}), skipping`)
+                            return
+                        }
+                    }
+
                     cachedPrice = {
                         symbol: "GBPJPY",
                         bid,

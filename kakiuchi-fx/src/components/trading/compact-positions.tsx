@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { useRouter } from "next/navigation"
 
 interface Position {
@@ -43,6 +43,12 @@ interface CompactPositionsProps {
 
 type TabType = "positions" | "orders" | "history"
 
+interface EditingState {
+    positionId: string
+    field: "stopLoss" | "takeProfit"
+    value: string
+}
+
 export function CompactPositions({ currentBid, currentAsk }: CompactPositionsProps) {
     const router = useRouter()
     const [positions, setPositions] = useState<Position[]>([])
@@ -50,6 +56,9 @@ export function CompactPositions({ currentBid, currentAsk }: CompactPositionsPro
     const [closedPositions, setClosedPositions] = useState<ClosedPosition[]>([])
     const [loading, setLoading] = useState<string | null>(null)
     const [activeTab, setActiveTab] = useState<TabType>("positions")
+    const [editing, setEditing] = useState<EditingState | null>(null)
+    const [savingSlTp, setSavingSlTp] = useState(false)
+    const inputRef = useRef<HTMLInputElement>(null)
 
     const fetchData = useCallback(async () => {
         try {
@@ -119,6 +128,68 @@ export function CompactPositions({ currentBid, currentAsk }: CompactPositionsPro
             setLoading(null)
         }
     }
+
+    // SL/TP編集開始
+    const handleStartEdit = (positionId: string, field: "stopLoss" | "takeProfit", currentValue: number | null) => {
+        setEditing({
+            positionId,
+            field,
+            value: currentValue !== null ? currentValue.toFixed(3) : ""
+        })
+    }
+
+    // SL/TP保存
+    const handleSaveSlTp = async () => {
+        if (!editing) return
+        setSavingSlTp(true)
+
+        try {
+            const position = positions.find(p => p.id === editing.positionId)
+            if (!position) return
+
+            const newValue = editing.value.trim() === "" ? null : parseFloat(editing.value)
+
+            const payload: { stopLoss?: number | null; takeProfit?: number | null } = {}
+            if (editing.field === "stopLoss") {
+                payload.stopLoss = newValue
+                payload.takeProfit = position.takeProfit
+            } else {
+                payload.takeProfit = newValue
+                payload.stopLoss = position.stopLoss
+            }
+
+            const res = await fetch(`/api/positions/${editing.positionId}`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            })
+
+            if (res.ok) {
+                fetchData()
+                setEditing(null)
+            } else {
+                const data = await res.json()
+                alert(data.error || "SL/TPの更新に失敗しました")
+            }
+        } catch {
+            alert("エラーが発生しました")
+        } finally {
+            setSavingSlTp(false)
+        }
+    }
+
+    // 編集キャンセル
+    const handleCancelEdit = () => {
+        setEditing(null)
+    }
+
+    // 編集モード時にinputにフォーカス
+    useEffect(() => {
+        if (editing && inputRef.current) {
+            inputRef.current.focus()
+            inputRef.current.select()
+        }
+    }, [editing])
 
     const formatTime = (dateStr: string) => {
         const date = new Date(dateStr)
@@ -214,11 +285,75 @@ export function CompactPositions({ currentBid, currentAsk }: CompactPositionsPro
                                             <td className="py-1.5 px-2 text-right text-slate-300 font-mono">
                                                 {currentBid > 0 ? currentPrice.toFixed(3) : "---"}
                                             </td>
-                                            <td className="py-1.5 px-2 text-right text-slate-400 font-mono">
-                                                {pos.stopLoss ? pos.stopLoss.toFixed(3) : "---"}
+                                            {/* S/L 編集可能セル */}
+                                            <td className="py-1.5 px-1 text-right">
+                                                {editing?.positionId === pos.id && editing?.field === "stopLoss" ? (
+                                                    <div className="flex items-center gap-1">
+                                                        <input
+                                                            ref={inputRef}
+                                                            type="number"
+                                                            step="0.001"
+                                                            value={editing.value}
+                                                            onChange={(e) => setEditing({ ...editing, value: e.target.value })}
+                                                            onKeyDown={(e) => {
+                                                                if (e.key === "Enter") handleSaveSlTp()
+                                                                if (e.key === "Escape") handleCancelEdit()
+                                                            }}
+                                                            className="w-20 px-1 py-0.5 text-xs text-right bg-slate-700 border border-blue-500 rounded text-white font-mono focus:outline-none"
+                                                            disabled={savingSlTp}
+                                                        />
+                                                        <button
+                                                            onClick={handleSaveSlTp}
+                                                            disabled={savingSlTp}
+                                                            className="px-1 py-0.5 text-[10px] bg-blue-600 hover:bg-blue-500 rounded text-white"
+                                                        >
+                                                            {savingSlTp ? "..." : "✓"}
+                                                        </button>
+                                                    </div>
+                                                ) : (
+                                                    <button
+                                                        onClick={() => handleStartEdit(pos.id, "stopLoss", pos.stopLoss)}
+                                                        className="text-slate-400 hover:text-red-400 font-mono text-xs cursor-pointer hover:underline"
+                                                        title="クリックして編集"
+                                                    >
+                                                        {pos.stopLoss ? pos.stopLoss.toFixed(3) : "---"}
+                                                    </button>
+                                                )}
                                             </td>
-                                            <td className="py-1.5 px-2 text-right text-slate-400 font-mono">
-                                                {pos.takeProfit ? pos.takeProfit.toFixed(3) : "---"}
+                                            {/* T/P 編集可能セル */}
+                                            <td className="py-1.5 px-1 text-right">
+                                                {editing?.positionId === pos.id && editing?.field === "takeProfit" ? (
+                                                    <div className="flex items-center gap-1">
+                                                        <input
+                                                            ref={inputRef}
+                                                            type="number"
+                                                            step="0.001"
+                                                            value={editing.value}
+                                                            onChange={(e) => setEditing({ ...editing, value: e.target.value })}
+                                                            onKeyDown={(e) => {
+                                                                if (e.key === "Enter") handleSaveSlTp()
+                                                                if (e.key === "Escape") handleCancelEdit()
+                                                            }}
+                                                            className="w-20 px-1 py-0.5 text-xs text-right bg-slate-700 border border-blue-500 rounded text-white font-mono focus:outline-none"
+                                                            disabled={savingSlTp}
+                                                        />
+                                                        <button
+                                                            onClick={handleSaveSlTp}
+                                                            disabled={savingSlTp}
+                                                            className="px-1 py-0.5 text-[10px] bg-blue-600 hover:bg-blue-500 rounded text-white"
+                                                        >
+                                                            {savingSlTp ? "..." : "✓"}
+                                                        </button>
+                                                    </div>
+                                                ) : (
+                                                    <button
+                                                        onClick={() => handleStartEdit(pos.id, "takeProfit", pos.takeProfit)}
+                                                        className="text-slate-400 hover:text-green-400 font-mono text-xs cursor-pointer hover:underline"
+                                                        title="クリックして編集"
+                                                    >
+                                                        {pos.takeProfit ? pos.takeProfit.toFixed(3) : "---"}
+                                                    </button>
+                                                )}
                                             </td>
                                             <td className={`py-1.5 px-2 text-right font-mono font-medium ${currentBid <= 0 ? 'text-slate-500' :
                                                 pnl >= 0 ? 'text-green-400' : 'text-red-400'
