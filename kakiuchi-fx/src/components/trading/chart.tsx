@@ -246,8 +246,18 @@ export function TradingChart({ currentBid, currentAsk }: TradingChartProps) {
 
         // 異常な価格値をフィルタリング（GBPJPYは通常150-250の範囲）
         if (price < 100 || price > 300) {
-            console.warn(`[Chart] Abnormal price detected: ${price}, skipping update`)
+            console.warn(`[Chart] Abnormal price detected (out of range): ${price.toFixed(3)} (bid=${currentBid.toFixed(3)}, ask=${currentAsk.toFixed(3)})`)
             return
+        }
+
+        // 前回価格との急激な変動をチェック（3円以上の変動は異常）
+        if (lastBarRef.current && lastBarRef.current.close > 0) {
+            const priceChange = Math.abs(price - lastBarRef.current.close)
+            if (priceChange > 3) {
+                console.warn(`[Chart] Abnormal price change detected: ${lastBarRef.current.close.toFixed(3)} -> ${price.toFixed(3)} (change: ${priceChange.toFixed(3)})`)
+                // 異常変動は表示しないでスキップ
+                return
+            }
         }
 
         const intervalSeconds = TIMEFRAME_SECONDS[timeframe]
