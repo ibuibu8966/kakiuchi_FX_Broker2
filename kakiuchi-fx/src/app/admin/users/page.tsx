@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { translateStatus, formatDate, getStatusColor } from "@/lib/utils"
+import { formatDate } from "@/lib/utils"
 import { formatAmount } from "@/lib/utils/bigint"
 
 export default async function AdminUsersPage() {
@@ -39,7 +39,6 @@ export default async function AdminUsersPage() {
                                     <th className="text-left py-3 px-4 text-sm font-medium text-slate-400">口座番号</th>
                                     <th className="text-right py-3 px-4 text-sm font-medium text-slate-400">残高</th>
                                     <th className="text-center py-3 px-4 text-sm font-medium text-slate-400">レバレッジ</th>
-                                    <th className="text-center py-3 px-4 text-sm font-medium text-slate-400">KYC</th>
                                     <th className="text-center py-3 px-4 text-sm font-medium text-slate-400">権限</th>
                                     <th className="text-left py-3 px-4 text-sm font-medium text-slate-400">登録日</th>
                                 </tr>
@@ -61,11 +60,6 @@ export default async function AdminUsersPage() {
                                         </td>
                                         <td className="py-4 px-4 text-center text-white">
                                             {user.accounts[0]?.leverage || "---"}倍
-                                        </td>
-                                        <td className="py-4 px-4 text-center">
-                                            <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(user.kycStatus)}`}>
-                                                {translateStatus(user.kycStatus)}
-                                            </span>
                                         </td>
                                         <td className="py-4 px-4 text-center">
                                             <span className={`px-2 py-1 rounded text-xs font-medium ${user.role === "ADMIN"

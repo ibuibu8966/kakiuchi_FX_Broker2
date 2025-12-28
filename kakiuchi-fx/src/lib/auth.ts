@@ -11,7 +11,6 @@ declare module "next-auth" {
             email: string
             name: string
             role: "USER" | "ADMIN"
-            kycStatus: string
         }
     }
 
@@ -20,7 +19,6 @@ declare module "next-auth" {
         email: string
         name: string
         role: "USER" | "ADMIN"
-        kycStatus: string
     }
 }
 
@@ -71,7 +69,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                     email: user.email,
                     name: user.name,
                     role: user.role,
-                    kycStatus: user.kycStatus,
                 }
             },
         }),
@@ -81,14 +78,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             if (user) {
                 token.id = user.id
                 token.role = user.role
-                token.kycStatus = user.kycStatus
             }
             return token
         },
         async session({ session, token }) {
             session.user.id = token.id as string
             session.user.role = token.role as "USER" | "ADMIN"
-            session.user.kycStatus = token.kycStatus as string
             return session
         },
     },

@@ -20,7 +20,6 @@ async function main() {
             name: "管理者",
             passwordHash: adminPassword,
             role: "ADMIN",
-            kycStatus: "VERIFIED",
             isActive: true,
         },
     })
@@ -30,44 +29,11 @@ async function main() {
     const userPassword = await bcrypt.hash("demo1234", 12)
 
     const demoUsers = [
-        {
-            email: "tanaka@example.com",
-            name: "田中太郎",
-            kycStatus: "VERIFIED" as const,
-            postalCode: "100-0001",
-            prefecture: "東京都",
-            city: "千代田区",
-            address1: "丸の内1-1-1",
-        },
-        {
-            email: "suzuki@example.com",
-            name: "鈴木花子",
-            kycStatus: "SUBMITTED" as const,
-            postalCode: "150-0001",
-            prefecture: "東京都",
-            city: "渋谷区",
-            address1: "渋谷2-2-2",
-        },
-        {
-            email: "yamamoto@example.com",
-            name: "山本健一",
-            kycStatus: "PENDING" as const,
-        },
-        {
-            email: "sato@example.com",
-            name: "佐藤美咲",
-            kycStatus: "VERIFIED" as const,
-            postalCode: "530-0001",
-            prefecture: "大阪府",
-            city: "大阪市北区",
-            address1: "梅田3-3-3",
-        },
-        {
-            email: "watanabe@example.com",
-            name: "渡辺裕二",
-            kycStatus: "REJECTED" as const,
-            kycRejectedReason: "書類が不鮮明です。再提出をお願いします。",
-        },
+        { email: "tanaka@example.com", name: "田中太郎" },
+        { email: "suzuki@example.com", name: "鈴木花子" },
+        { email: "yamamoto@example.com", name: "山本健一" },
+        { email: "sato@example.com", name: "佐藤美咲" },
+        { email: "watanabe@example.com", name: "渡辺裕二" },
     ]
 
     for (const userData of demoUsers) {
@@ -79,16 +45,6 @@ async function main() {
                 name: userData.name,
                 passwordHash: userPassword,
                 role: "USER",
-                kycStatus: userData.kycStatus,
-                kycSubmittedAt: userData.kycStatus !== "PENDING" ? new Date() : null,
-                kycVerifiedAt: userData.kycStatus === "VERIFIED" ? new Date() : null,
-                kycRejectedReason: userData.kycRejectedReason || null,
-                postalCode: userData.postalCode || null,
-                prefecture: userData.prefecture || null,
-                city: userData.city || null,
-                address1: userData.address1 || null,
-                idDocumentType: userData.kycStatus !== "PENDING" ? "DRIVERS_LICENSE" : null,
-                addressDocumentType: userData.kycStatus !== "PENDING" ? "UTILITY_BILL" : null,
                 isActive: true,
             },
         })
@@ -107,7 +63,7 @@ async function main() {
             })
         }
 
-        console.log(`✅ User created: ${user.name} (${user.email}) - KYC: ${user.kycStatus}`)
+        console.log(`✅ User created: ${user.name} (${user.email})`)
     }
 
     // 入出金デモデータを作成
@@ -147,8 +103,8 @@ async function main() {
     const chatUsers = accounts.slice(0, 3)
     const chatMessages = [
         { subject: "入金について", messages: ["入金申請をしましたが、いつ反映されますか？", "確認中です。少々お待ちください。", "ありがとうございます。"] },
-        { subject: "KYC審査について", messages: ["KYC書類を提出しました。審査にはどのくらいかかりますか？"] },
-        { subject: "出金手続きについて", messages: ["出金申請の状況を教えてください。"] },
+        { subject: "出金について", messages: ["出金申請の状況を教えてください。"] },
+        { subject: "取引について", messages: ["取引の方法を教えてください。"] },
     ]
 
     for (let i = 0; i < chatUsers.length; i++) {

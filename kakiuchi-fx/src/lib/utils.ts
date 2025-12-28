@@ -44,16 +44,12 @@ export function formatDate(date: Date | string, includeTime: boolean = true): st
  */
 export function getStatusColor(status: string): string {
     const colors: Record<string, string> = {
-        // KYC
-        PENDING: 'bg-yellow-100 text-yellow-800',
-        SUBMITTED: 'bg-blue-100 text-blue-800',
-        VERIFIED: 'bg-green-100 text-green-800',
-        REJECTED: 'bg-red-100 text-red-800',
         // Account
         ACTIVE: 'bg-green-100 text-green-800',
         SUSPENDED: 'bg-orange-100 text-orange-800',
         CLOSED: 'bg-gray-100 text-gray-800',
         // Order
+        PENDING: 'bg-yellow-100 text-yellow-800',
         FILLED: 'bg-green-100 text-green-800',
         CANCELLED: 'bg-gray-100 text-gray-800',
         EXPIRED: 'bg-gray-100 text-gray-800',
@@ -63,6 +59,7 @@ export function getStatusColor(status: string): string {
         // Transaction
         APPROVED: 'bg-blue-100 text-blue-800',
         COMPLETED: 'bg-green-100 text-green-800',
+        REJECTED: 'bg-red-100 text-red-800',
         // Chat
         RESOLVED: 'bg-green-100 text-green-800',
     };
@@ -74,16 +71,12 @@ export function getStatusColor(status: string): string {
  */
 export function translateStatus(status: string): string {
     const translations: Record<string, string> = {
-        // KYC
-        PENDING: '未提出',
-        SUBMITTED: '審査中',
-        VERIFIED: '承認済み',
-        REJECTED: '却下',
         // Account
         ACTIVE: 'アクティブ',
         SUSPENDED: '停止中',
         CLOSED: '閉鎖',
         // Order
+        PENDING: '保留',
         FILLED: '約定',
         CANCELLED: 'キャンセル',
         EXPIRED: '期限切れ',
@@ -95,6 +88,7 @@ export function translateStatus(status: string): string {
         WITHDRAWAL: '出金',
         APPROVED: '承認済み',
         COMPLETED: '完了',
+        REJECTED: '却下',
         // Chat
         RESOLVED: '解決済み',
         // Order Side
@@ -112,23 +106,3 @@ export function translateStatus(status: string): string {
  * レバレッジの選択肢
  */
 export const LEVERAGE_OPTIONS = [25, 50, 100, 200, 500] as const;
-
-/**
- * KYCの身分証明書種類
- */
-export const ID_DOCUMENT_TYPES = [
-    { value: 'DRIVERS_LICENSE', label: '運転免許証' },
-    { value: 'PASSPORT', label: 'パスポート' },
-    { value: 'MY_NUMBER_CARD', label: 'マイナンバーカード' },
-    { value: 'RESIDENCE_CARD', label: '在留カード' },
-] as const;
-
-/**
- * KYCの住所確認書類種類
- */
-export const ADDRESS_DOCUMENT_TYPES = [
-    { value: 'UTILITY_BILL', label: '公共料金請求書' },
-    { value: 'BANK_STATEMENT', label: '銀行取引明細' },
-    { value: 'TAX_DOCUMENT', label: '住民税決定通知書' },
-    { value: 'RESIDENCE_CERT', label: '住民票' },
-] as const;

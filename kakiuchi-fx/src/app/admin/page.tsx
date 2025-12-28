@@ -7,14 +7,12 @@ export default async function AdminDashboardPage() {
     // 統計データを取得
     const [
         totalUsers,
-        pendingKyc,
         pendingTransactions,
         openPositions,
         openChats,
         totalBalance,
     ] = await Promise.all([
         prisma.user.count(),
-        prisma.user.count({ where: { kycStatus: "SUBMITTED" } }),
         prisma.transaction.count({ where: { status: "PENDING" } }),
         prisma.position.count({ where: { status: "OPEN" } }),
         prisma.chatRoom.count({ where: { status: "OPEN" } }),
@@ -27,13 +25,6 @@ export default async function AdminDashboardPage() {
             value: totalUsers,
             href: "/admin/users",
             color: "blue",
-        },
-        {
-            name: "KYC審査待ち",
-            value: pendingKyc,
-            href: "/admin/kyc",
-            color: "yellow",
-            alert: pendingKyc > 0,
         },
         {
             name: "入出金申請待ち",
@@ -65,7 +56,7 @@ export default async function AdminDashboardPage() {
             </div>
 
             {/* 統計カード */}
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                 {stats.map((stat) => (
                     <Link key={stat.name} href={stat.href}>
                         <Card className={`bg-slate-900/50 border-slate-800 hover:border-${stat.color}-500/50 transition-colors cursor-pointer relative`}>
@@ -97,23 +88,7 @@ export default async function AdminDashboardPage() {
             </Card>
 
             {/* クイックリンク */}
-            <div className="grid gap-4 md:grid-cols-3">
-                <Link href="/admin/kyc">
-                    <Card className="bg-yellow-500/10 border-yellow-500/30 hover:bg-yellow-500/20 transition-colors cursor-pointer">
-                        <CardContent className="p-6 flex items-center gap-4">
-                            <div className="w-12 h-12 rounded-lg bg-yellow-500/20 flex items-center justify-center">
-                                <svg className="w-6 h-6 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                                </svg>
-                            </div>
-                            <div>
-                                <p className="text-lg font-semibold text-white">KYC審査</p>
-                                <p className="text-sm text-yellow-400">{pendingKyc}件の申請待ち</p>
-                            </div>
-                        </CardContent>
-                    </Card>
-                </Link>
-
+            <div className="grid gap-4 md:grid-cols-2">
                 <Link href="/admin/transactions">
                     <Card className="bg-orange-500/10 border-orange-500/30 hover:bg-orange-500/20 transition-colors cursor-pointer">
                         <CardContent className="p-6 flex items-center gap-4">

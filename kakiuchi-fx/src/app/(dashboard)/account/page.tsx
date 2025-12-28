@@ -90,18 +90,9 @@ export default async function AccountPage() {
                             <span className="text-slate-400">メールアドレス</span>
                             <span className="text-white">{user?.email || "---"}</span>
                         </div>
-                        <div className="flex justify-between py-3 border-b border-slate-800">
+                        <div className="flex justify-between py-3">
                             <span className="text-slate-400">電話番号</span>
                             <span className="text-white">{user?.phone || "未登録"}</span>
-                        </div>
-                        <div className="flex justify-between py-3">
-                            <span className="text-slate-400">KYCステータス</span>
-                            <span className={`px-2 py-1 rounded text-xs font-medium ${user?.kycStatus === 'VERIFIED' ? 'bg-green-500/20 text-green-400' :
-                                user?.kycStatus === 'SUBMITTED' ? 'bg-blue-500/20 text-blue-400' :
-                                    'bg-yellow-500/20 text-yellow-400'
-                                }`}>
-                                {translateStatus(user?.kycStatus || 'PENDING')}
-                            </span>
                         </div>
                     </CardContent>
                 </Card>
@@ -113,28 +104,28 @@ export default async function AccountPage() {
                     </CardHeader>
                     <CardContent className="space-y-3">
                         <Link
-                            href="/kyc"
+                            href="/wallet"
                             className="flex items-center justify-between p-4 rounded-lg bg-slate-800/50 hover:bg-slate-800 transition-colors"
                         >
-                            <span className="text-white">本人確認（KYC）</span>
+                            <span className="text-white">入金・出金</span>
                             <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                             </svg>
                         </Link>
                         <Link
-                            href="/deposit"
+                            href="/trade"
                             className="flex items-center justify-between p-4 rounded-lg bg-slate-800/50 hover:bg-slate-800 transition-colors"
                         >
-                            <span className="text-white">入金申請</span>
+                            <span className="text-white">取引</span>
                             <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                             </svg>
                         </Link>
                         <Link
-                            href="/withdraw"
+                            href="/support"
                             className="flex items-center justify-between p-4 rounded-lg bg-slate-800/50 hover:bg-slate-800 transition-colors"
                         >
-                            <span className="text-white">出金申請</span>
+                            <span className="text-white">サポート</span>
                             <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                             </svg>
