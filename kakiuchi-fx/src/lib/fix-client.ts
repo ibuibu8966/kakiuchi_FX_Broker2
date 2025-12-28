@@ -300,7 +300,8 @@ export function getCurrentPrice(): PriceQuote | null {
     if (mode === "fix") {
         connectToFIX()
         if (cachedPrice && isPriceValid()) return cachedPrice
-        // FIX接続がまだ確立されていない場合はmockにフォールバック
+        // FIXモードで価格が無効（市場閉鎖時）はnullを返す
+        return null
     }
     // mock または デフォルト（未設定時）
     const bid = 207.8 + (Math.random() - 0.5) * 0.1

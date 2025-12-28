@@ -67,7 +67,7 @@ export async function POST(request: Request) {
         const currentPrice = await getExecutionPrice()
         if (!currentPrice) {
             return NextResponse.json(
-                { error: "現在サーバーメンテナンス中です。しばらくお待ちください。" },
+                { error: "現在市場が閉まっています。営業時間：月曜7:00～土曜7:00（日本時間）" },
                 { status: 503 }
             )
         }
