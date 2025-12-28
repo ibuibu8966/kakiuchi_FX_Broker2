@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "Position" ADD COLUMN IF NOT EXISTS "accumulatedSwap" BIGINT NOT NULL DEFAULT 0;
