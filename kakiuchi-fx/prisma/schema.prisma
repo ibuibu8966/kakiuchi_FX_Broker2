@@ -338,6 +338,10 @@ model SystemSettings {
   swapRateSell      BigInt   @default(0)   // 売りポジションのスワップ
   swapCalculationHour Int    @default(7)   // スワップ計算時間（日本時間、デフォルト7時）
 
+  // 入金設定
+  depositQrCodeUrl     String?  // QRコード画像のURL
+  depositWalletAddress String?  // ウォレットアドレス（テキスト）
+
   updatedAt       DateTime @updatedAt
   updatedBy       String?
 }

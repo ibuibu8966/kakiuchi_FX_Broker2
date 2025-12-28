@@ -12,6 +12,8 @@ interface SystemSettings {
     swap_rate_buy: number
     swap_rate_sell: number
     swap_calculation_hour: number
+    deposit_qr_code_url: string | null
+    deposit_wallet_address: string | null
 }
 
 export default function AdminSettingsPage() {
@@ -22,7 +24,12 @@ export default function AdminSettingsPage() {
         swap_rate_buy: 0,
         swap_rate_sell: 0,
         swap_calculation_hour: 7,
+        deposit_qr_code_url: null,
+        deposit_wallet_address: null,
     })
+    const [qrUploading, setQrUploading] = useState(false)
+    const [qrFile, setQrFile] = useState<File | null>(null)
+    const [qrPreview, setQrPreview] = useState<string | null>(null)
     const [isLoading, setIsLoading] = useState(true)
     const [isSaving, setIsSaving] = useState(false)
     const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
@@ -67,6 +74,50 @@ export default function AdminSettingsPage() {
             setMessage({ type: "error", text: "保存に失敗しました" })
         } finally {
             setIsSaving(false)
+        }
+    }
+
+    const handleQrFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0]
+        if (file) {
+            setQrFile(file)
+            const reader = new FileReader()
+            reader.onloadend = () => {
+                setQrPreview(reader.result as string)
+            }
+            reader.readAsDataURL(file)
+        }
+    }
+
+    const handleQrUpload = async () => {
+        if (!qrFile) return
+
+        setQrUploading(true)
+        setMessage(null)
+
+        try {
+            const formData = new FormData()
+            formData.append("file", qrFile)
+
+            const response = await fetch("/api/admin/settings/upload-qr", {
+                method: "POST",
+                body: formData,
+            })
+
+            const data = await response.json()
+
+            if (response.ok) {
+                setSettings(prev => ({ ...prev, deposit_qr_code_url: data.url }))
+                setQrFile(null)
+                setQrPreview(null)
+                setMessage({ type: "success", text: "QRコードをアップロードしました" })
+            } else {
+                throw new Error(data.error || "アップロードに失敗しました")
+            }
+        } catch (error) {
+            setMessage({ type: "error", text: error instanceof Error ? error.message : "アップロードに失敗しました" })
+        } finally {
+            setQrUploading(false)
         }
     }
 
@@ -209,6 +260,73 @@ export default function AdminSettingsPage() {
                             />
                             <p className="text-xs text-slate-500 mt-1">
                                 毎日この時間にスワップを計算（水曜日は3日分）
+                            </p>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                {/* 入金設定 */}
+                <Card className="bg-slate-900/50 border-slate-800">
+                    <CardHeader>
+                        <CardTitle className="text-white">入金設定（USDT TRC20）</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                        {/* QRコード */}
+                        <div>
+                            <label className="text-sm text-slate-400 block mb-2">
+                                入金用QRコード
+                            </label>
+                            <div className="flex gap-4 items-start">
+                                <div className="flex-1">
+                                    <input
+                                        type="file"
+                                        accept="image/*"
+                                        onChange={handleQrFileChange}
+                                        className="block w-full text-sm text-slate-400
+                                            file:mr-4 file:py-2 file:px-4
+                                            file:rounded-lg file:border-0
+                                            file:text-sm file:font-semibold
+                                            file:bg-purple-600 file:text-white
+                                            hover:file:bg-purple-700"
+                                    />
+                                    {qrFile && (
+                                        <Button
+                                            onClick={handleQrUpload}
+                                            disabled={qrUploading}
+                                            className="mt-2"
+                                            size="sm"
+                                        >
+                                            {qrUploading ? "アップロード中..." : "アップロード"}
+                                        </Button>
+                                    )}
+                                </div>
+                                {/* プレビュー */}
+                                <div className="w-32 h-32 bg-slate-800 rounded-lg flex items-center justify-center overflow-hidden">
+                                    {qrPreview ? (
+                                        <img src={qrPreview} alt="QR Preview" className="w-full h-full object-contain" />
+                                    ) : settings.deposit_qr_code_url ? (
+                                        <img src={settings.deposit_qr_code_url} alt="Current QR" className="w-full h-full object-contain" />
+                                    ) : (
+                                        <span className="text-slate-500 text-xs text-center">QRコード<br />未設定</span>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* ウォレットアドレス */}
+                        <div>
+                            <label className="text-sm text-slate-400 block mb-2">
+                                ウォレットアドレス（TRC20）
+                            </label>
+                            <Input
+                                type="text"
+                                value={settings.deposit_wallet_address || ""}
+                                onChange={(e) => setSettings(prev => ({ ...prev, deposit_wallet_address: e.target.value }))}
+                                placeholder="TRxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                                className="bg-slate-800 border-slate-700 text-white font-mono"
+                            />
+                            <p className="text-xs text-slate-500 mt-1">
+                                顧客の入金画面に表示されます
                             </p>
                         </div>
                     </CardContent>

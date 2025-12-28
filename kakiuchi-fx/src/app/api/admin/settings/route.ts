@@ -19,6 +19,8 @@ export async function GET() {
                 swap_rate_buy: Number(settings.swapRateBuy),
                 swap_rate_sell: Number(settings.swapRateSell),
                 swap_calculation_hour: settings.swapCalculationHour,
+                deposit_qr_code_url: settings.depositQrCodeUrl,
+                deposit_wallet_address: settings.depositWalletAddress,
             } : null,
         })
     } catch (error) {
@@ -38,7 +40,7 @@ export async function POST(request: Request) {
         }
 
         const body = await request.json()
-        const { spread, commission, losscut_level, swap_rate_buy, swap_rate_sell, swap_calculation_hour } = body
+        const { spread, commission, losscut_level, swap_rate_buy, swap_rate_sell, swap_calculation_hour, deposit_wallet_address } = body
 
         // 既存設定を取得または作成
         const existingSettings = await prisma.systemSettings.findFirst()
@@ -53,6 +55,7 @@ export async function POST(request: Request) {
                     swapRateBuy: BigInt(swap_rate_buy ?? 0),
                     swapRateSell: BigInt(swap_rate_sell ?? 0),
                     swapCalculationHour: swap_calculation_hour ?? 7,
+                    depositWalletAddress: deposit_wallet_address ?? undefined,
                 },
             })
         } else {
@@ -64,6 +67,7 @@ export async function POST(request: Request) {
                     swapRateBuy: BigInt(swap_rate_buy ?? 0),
                     swapRateSell: BigInt(swap_rate_sell ?? 0),
                     swapCalculationHour: swap_calculation_hour ?? 7,
+                    depositWalletAddress: deposit_wallet_address ?? undefined,
                 },
             })
         }
@@ -75,7 +79,7 @@ export async function POST(request: Request) {
                 action: "SETTINGS_UPDATED",
                 entityType: "SystemSettings",
                 entityId: existingSettings?.id || "new",
-                newValue: { spread, commission, losscut_level, swap_rate_buy, swap_rate_sell, swap_calculation_hour },
+                newValue: { spread, commission, losscut_level, swap_rate_buy, swap_rate_sell, swap_calculation_hour, deposit_wallet_address },
             },
         })
 

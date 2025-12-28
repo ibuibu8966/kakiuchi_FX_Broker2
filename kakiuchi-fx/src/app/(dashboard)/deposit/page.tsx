@@ -1,12 +1,14 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 
-// 会社のUSDTウォレットアドレス（TRC20）
-const COMPANY_WALLET_ADDRESS = "TXxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+interface DepositInfo {
+    qrCodeUrl: string | null
+    walletAddress: string | null
+}
 
 export default function DepositPage() {
     const [step, setStep] = useState<"request" | "confirm">("request")
@@ -15,6 +17,25 @@ export default function DepositPage() {
     const [transactionId, setTransactionId] = useState("")
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
+    const [depositInfo, setDepositInfo] = useState<DepositInfo>({ qrCodeUrl: null, walletAddress: null })
+    const [isLoadingInfo, setIsLoadingInfo] = useState(true)
+
+    useEffect(() => {
+        const fetchDepositInfo = async () => {
+            try {
+                const response = await fetch("/api/deposit-info")
+                if (response.ok) {
+                    const data = await response.json()
+                    setDepositInfo(data)
+                }
+            } catch (error) {
+                console.error("Failed to fetch deposit info:", error)
+            } finally {
+                setIsLoadingInfo(false)
+            }
+        }
+        fetchDepositInfo()
+    }, [])
 
     const handleRequestSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -29,7 +50,7 @@ export default function DepositPage() {
                     type: "DEPOSIT",
                     amount: parseFloat(amount),
                     network: "TRC20",
-                    depositAddress: COMPANY_WALLET_ADDRESS,
+                    depositAddress: depositInfo.walletAddress || "",
                 }),
             })
 
@@ -80,9 +101,11 @@ export default function DepositPage() {
     }
 
     const copyToClipboard = () => {
-        navigator.clipboard.writeText(COMPANY_WALLET_ADDRESS)
-        setMessage({ type: "success", text: "アドレスをコピーしました" })
-        setTimeout(() => setMessage(null), 2000)
+        if (depositInfo.walletAddress) {
+            navigator.clipboard.writeText(depositInfo.walletAddress)
+            setMessage({ type: "success", text: "アドレスをコピーしました" })
+            setTimeout(() => setMessage(null), 2000)
+        }
     }
 
     return (
@@ -146,16 +169,31 @@ export default function DepositPage() {
                     <CardContent>
                         {step === "confirm" ? (
                             <div className="space-y-4">
+                                {/* QRコード表示 */}
+                                {depositInfo.qrCodeUrl && (
+                                    <div className="flex justify-center p-4 bg-white rounded-lg">
+                                        <img
+                                            src={depositInfo.qrCodeUrl}
+                                            alt="入金用QRコード"
+                                            className="w-48 h-48 object-contain"
+                                        />
+                                    </div>
+                                )}
+
                                 <div className="p-4 rounded-lg bg-slate-800 border border-slate-700">
                                     <label className="text-sm text-slate-400 block mb-2">送金先アドレス（TRC20）</label>
-                                    <div className="flex gap-2">
-                                        <code className="flex-1 p-3 bg-slate-900 rounded text-green-400 text-sm break-all">
-                                            {COMPANY_WALLET_ADDRESS}
-                                        </code>
-                                        <Button type="button" onClick={copyToClipboard} variant="outline" size="sm">
-                                            コピー
-                                        </Button>
-                                    </div>
+                                    {depositInfo.walletAddress ? (
+                                        <div className="flex gap-2">
+                                            <code className="flex-1 p-3 bg-slate-900 rounded text-green-400 text-sm break-all">
+                                                {depositInfo.walletAddress}
+                                            </code>
+                                            <Button type="button" onClick={copyToClipboard} variant="outline" size="sm">
+                                                コピー
+                                            </Button>
+                                        </div>
+                                    ) : (
+                                        <p className="text-slate-500 text-sm">アドレスが設定されていません。サポートにお問い合わせください。</p>
+                                    )}
                                 </div>
 
                                 <div className="p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
