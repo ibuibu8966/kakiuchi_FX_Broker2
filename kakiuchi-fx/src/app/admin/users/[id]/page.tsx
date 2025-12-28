@@ -71,6 +71,7 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
     const router = useRouter()
     const [data, setData] = useState<UserDetail | null>(null)
     const [loading, setLoading] = useState(true)
+    const [error, setError] = useState<string | null>(null)
     const [activeTab, setActiveTab] = useState<TabType>("transactions")
 
     useEffect(() => {
@@ -80,14 +81,14 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
     const fetchUserDetail = async () => {
         try {
             const res = await fetch(`/api/admin/users/${id}`)
+            const result = await res.json()
             if (res.ok) {
-                const result = await res.json()
                 setData(result)
             } else {
-                router.push("/admin/users")
+                setError(result.error || `エラー: ${res.status}`)
             }
-        } catch {
-            router.push("/admin/users")
+        } catch (err) {
+            setError(`ネットワークエラー: ${err instanceof Error ? err.message : "不明"}`)
         } finally {
             setLoading(false)
         }
@@ -125,7 +126,15 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
     }
 
     if (!data) {
-        return <div className="text-white">ユーザーが見つかりません</div>
+        return (
+            <div className="space-y-4">
+                <div className="text-white">ユーザーが見つかりません</div>
+                {error && <div className="text-red-400 text-sm">{error}</div>}
+                <Button onClick={() => router.push("/admin/users")} variant="outline">
+                    ユーザー一覧に戻る
+                </Button>
+            </div>
+        )
     }
 
     return (
