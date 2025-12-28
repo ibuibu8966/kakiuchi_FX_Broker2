@@ -214,6 +214,10 @@ model Position {
   closeUsdJpyRate  Float?        // 決済時のUSD/JPYレート
   realizedPnlUsdt  Float?        // USDT建て確定損益
 
+  // スワップ関連
+  accumulatedSwap    BigInt    @default(0)  // 累積スワップ（×100、USDT）
+  lastSwapAccrualAt  DateTime?              // 最後にスワップを加算した日時
+
   openedAt        DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
   closedAt        DateTime?
@@ -328,6 +332,11 @@ model SystemSettings {
   minLotSize      BigInt   @default(10)
   maxLotSize      BigInt   @default(100000)
   liquidationLevel Int     @default(20)
+
+  // スワップレート設定（1ロットあたり/日、×100でUSDT）
+  swapRateBuy       BigInt   @default(0)   // 買いポジションのスワップ（マイナスなら支払い）
+  swapRateSell      BigInt   @default(0)   // 売りポジションのスワップ
+  swapCalculationHour Int    @default(7)   // スワップ計算時間（日本時間、デフォルト7時）
 
   updatedAt       DateTime @updatedAt
   updatedBy       String?

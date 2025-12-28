@@ -37,6 +37,7 @@ export async function GET() {
             stopLoss: p.stopLoss ? Number(p.stopLoss) / 10000 : null,
             takeProfit: p.takeProfit ? Number(p.takeProfit) / 10000 : null,
             margin: Number(p.margin) / 10000,
+            accumulatedSwap: Number(p.accumulatedSwap) / 100, // USDT（×100で格納）
         }))
 
         // 待機注文をシリアライズ

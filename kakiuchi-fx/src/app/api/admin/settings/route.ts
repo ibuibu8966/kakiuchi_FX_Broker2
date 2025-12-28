@@ -16,6 +16,9 @@ export async function GET() {
                 spread: settings.spreadMarkup,
                 commission: Number(settings.commissionPerLot),
                 losscut_level: settings.liquidationLevel,
+                swap_rate_buy: Number(settings.swapRateBuy),
+                swap_rate_sell: Number(settings.swapRateSell),
+                swap_calculation_hour: settings.swapCalculationHour,
             } : null,
         })
     } catch (error) {
@@ -35,7 +38,7 @@ export async function POST(request: Request) {
         }
 
         const body = await request.json()
-        const { spread, commission, losscut_level } = body
+        const { spread, commission, losscut_level, swap_rate_buy, swap_rate_sell, swap_calculation_hour } = body
 
         // 既存設定を取得または作成
         const existingSettings = await prisma.systemSettings.findFirst()
@@ -47,6 +50,9 @@ export async function POST(request: Request) {
                     spreadMarkup: spread,
                     commissionPerLot: BigInt(commission),
                     liquidationLevel: losscut_level,
+                    swapRateBuy: BigInt(swap_rate_buy ?? 0),
+                    swapRateSell: BigInt(swap_rate_sell ?? 0),
+                    swapCalculationHour: swap_calculation_hour ?? 7,
                 },
             })
         } else {
@@ -55,6 +61,9 @@ export async function POST(request: Request) {
                     spreadMarkup: spread,
                     commissionPerLot: BigInt(commission),
                     liquidationLevel: losscut_level,
+                    swapRateBuy: BigInt(swap_rate_buy ?? 0),
+                    swapRateSell: BigInt(swap_rate_sell ?? 0),
+                    swapCalculationHour: swap_calculation_hour ?? 7,
                 },
             })
         }
@@ -66,7 +75,7 @@ export async function POST(request: Request) {
                 action: "SETTINGS_UPDATED",
                 entityType: "SystemSettings",
                 entityId: existingSettings?.id || "new",
-                newValue: { spread, commission, losscut_level },
+                newValue: { spread, commission, losscut_level, swap_rate_buy, swap_rate_sell, swap_calculation_hour },
             },
         })
 

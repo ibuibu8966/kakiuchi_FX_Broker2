@@ -11,6 +11,7 @@ import { connectToFIX, getCurrentPrice } from "./src/lib/fix-client"
 import { initOHLCCollector, onPriceUpdate as updateOHLC } from "./src/lib/ohlc-collector"
 import { startLosscutMonitor, onPriceUpdateLosscut } from "./src/lib/losscut-service"
 import { onPriceUpdateOrders } from "./src/lib/order-execution-service"
+import { startSwapScheduler } from "./src/lib/swap-service"
 
 const dev = process.env.NODE_ENV !== "production"
 const hostname = "localhost"
@@ -106,6 +107,10 @@ app.prepare().then(() => {
     // Start losscut monitor
     startLosscutMonitor()
     console.log("> Losscut Monitor started - checking margin levels every 5s")
+
+    // Start swap scheduler
+    startSwapScheduler()
+    console.log("> Swap Scheduler started - calculating overnight swap daily")
 
     // Start FIX connection
     connectToFIX()

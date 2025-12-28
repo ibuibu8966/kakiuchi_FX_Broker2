@@ -9,6 +9,9 @@ interface SystemSettings {
     spread: number
     commission: number
     losscut_level: number
+    swap_rate_buy: number
+    swap_rate_sell: number
+    swap_calculation_hour: number
 }
 
 export default function AdminSettingsPage() {
@@ -16,6 +19,9 @@ export default function AdminSettingsPage() {
         spread: 20, // 2.0 pips
         commission: 0,
         losscut_level: 20,
+        swap_rate_buy: 0,
+        swap_rate_sell: 0,
+        swap_calculation_hour: 7,
     })
     const [isLoading, setIsLoading] = useState(true)
     const [isSaving, setIsSaving] = useState(false)
@@ -148,6 +154,61 @@ export default function AdminSettingsPage() {
                             />
                             <p className="text-xs text-slate-500 mt-1">
                                 証拠金維持率がこの水準を下回ると自動決済
+                            </p>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                {/* スワップ設定 */}
+                <Card className="bg-slate-900/50 border-slate-800">
+                    <CardHeader>
+                        <CardTitle className="text-white">スワップ設定</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div>
+                            <label className="text-sm text-slate-400 block mb-2">
+                                買いスワップレート（USDT/ロット/日）
+                            </label>
+                            <Input
+                                type="number"
+                                step="0.01"
+                                value={settings.swap_rate_buy / 100}
+                                onChange={(e) => setSettings(prev => ({ ...prev, swap_rate_buy: Math.round(parseFloat(e.target.value || "0") * 100) }))}
+                                className="bg-slate-800 border-slate-700 text-white max-w-xs"
+                            />
+                            <p className="text-xs text-slate-500 mt-1">
+                                マイナス値で顧客から徴収、プラス値で顧客に付与
+                            </p>
+                        </div>
+                        <div>
+                            <label className="text-sm text-slate-400 block mb-2">
+                                売りスワップレート（USDT/ロット/日）
+                            </label>
+                            <Input
+                                type="number"
+                                step="0.01"
+                                value={settings.swap_rate_sell / 100}
+                                onChange={(e) => setSettings(prev => ({ ...prev, swap_rate_sell: Math.round(parseFloat(e.target.value || "0") * 100) }))}
+                                className="bg-slate-800 border-slate-700 text-white max-w-xs"
+                            />
+                            <p className="text-xs text-slate-500 mt-1">
+                                マイナス値で顧客から徴収、プラス値で顧客に付与
+                            </p>
+                        </div>
+                        <div>
+                            <label className="text-sm text-slate-400 block mb-2">
+                                スワップ計算時間（日本時間）
+                            </label>
+                            <Input
+                                type="number"
+                                value={settings.swap_calculation_hour}
+                                onChange={(e) => setSettings(prev => ({ ...prev, swap_calculation_hour: parseInt(e.target.value) || 7 }))}
+                                min="0"
+                                max="23"
+                                className="bg-slate-800 border-slate-700 text-white max-w-xs"
+                            />
+                            <p className="text-xs text-slate-500 mt-1">
+                                毎日この時間にスワップを計算（水曜日は3日分）
                             </p>
                         </div>
                     </CardContent>

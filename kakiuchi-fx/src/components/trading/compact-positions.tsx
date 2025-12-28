@@ -13,6 +13,7 @@ interface Position {
     takeProfit: number | null
     pnl: number
     currentPrice: number
+    accumulatedSwap: number
 }
 
 interface Order {
@@ -261,6 +262,7 @@ export function CompactPositions({ currentBid, currentAsk }: CompactPositionsPro
                                     <th className="text-right py-1.5 px-2">現在</th>
                                     <th className="text-right py-1.5 px-2">S/L</th>
                                     <th className="text-right py-1.5 px-2">T/P</th>
+                                    <th className="text-right py-1.5 px-2">スワップ</th>
                                     <th className="text-right py-1.5 px-2">損益</th>
                                     <th className="text-center py-1.5 px-2"></th>
                                 </tr>
@@ -354,6 +356,12 @@ export function CompactPositions({ currentBid, currentAsk }: CompactPositionsPro
                                                         {pos.takeProfit ? pos.takeProfit.toFixed(3) : "---"}
                                                     </button>
                                                 )}
+                                            </td>
+                                            {/* スワップ列 */}
+                                            <td className={`py-1.5 px-2 text-right font-mono text-xs ${
+                                                pos.accumulatedSwap >= 0 ? 'text-green-400' : 'text-red-400'
+                                            }`}>
+                                                {pos.accumulatedSwap === 0 ? "---" : `$${pos.accumulatedSwap.toFixed(2)}`}
                                             </td>
                                             <td className={`py-1.5 px-2 text-right font-mono font-medium ${currentBid <= 0 ? 'text-slate-500' :
                                                 pnl >= 0 ? 'text-green-400' : 'text-red-400'
