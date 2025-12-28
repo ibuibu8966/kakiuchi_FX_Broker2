@@ -33,16 +33,30 @@ function LoginForm() {
 
             if (result?.error) {
                 setError(result.error)
+                setIsLoading(false)
             } else {
-                // セッション更新後にリダイレクト
+                // ログイン成功 - ローディング状態を維持したままリダイレクト
                 router.refresh()
                 router.push(callbackUrl)
+                // リダイレクト中もローディング表示を維持（setIsLoading(false)を呼ばない）
             }
         } catch {
             setError("ログイン中にエラーが発生しました")
-        } finally {
             setIsLoading(false)
         }
+    }
+
+    // フルスクリーンローディング表示
+    if (isLoading) {
+        return (
+            <div className="fixed inset-0 bg-slate-900/95 flex flex-col items-center justify-center z-50">
+                <div className="relative">
+                    <div className="w-16 h-16 border-4 border-blue-500/30 border-t-blue-500 rounded-full animate-spin"></div>
+                </div>
+                <p className="mt-6 text-white text-lg font-medium">ログイン中...</p>
+                <p className="mt-2 text-slate-400 text-sm">しばらくお待ちください</p>
+            </div>
+        )
     }
 
     return (

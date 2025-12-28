@@ -28,24 +28,39 @@ export default function AdminLoginPage() {
 
             if (result?.error) {
                 setError("メールアドレスまたはパスワードが正しくありません")
+                setIsLoading(false)
             } else {
                 // 管理者権限チェック
                 const res = await fetch("/api/auth/check-admin")
                 const data = await res.json()
 
                 if (data.isAdmin) {
+                    // ログイン成功 - ローディング状態を維持したままリダイレクト
                     router.refresh()
                     router.push("/admin")
                 } else {
                     setError("管理者権限がありません")
                     await signOut({ redirect: false })
+                    setIsLoading(false)
                 }
             }
         } catch {
             setError("ログインに失敗しました")
-        } finally {
             setIsLoading(false)
         }
+    }
+
+    // フルスクリーンローディング表示
+    if (isLoading) {
+        return (
+            <div className="fixed inset-0 bg-slate-950 flex flex-col items-center justify-center z-50">
+                <div className="relative">
+                    <div className="w-16 h-16 border-4 border-red-500/30 border-t-red-500 rounded-full animate-spin"></div>
+                </div>
+                <p className="mt-6 text-white text-lg font-medium">ログイン中...</p>
+                <p className="mt-2 text-slate-400 text-sm">しばらくお待ちください</p>
+            </div>
+        )
     }
 
     return (

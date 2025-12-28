@@ -60,11 +60,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                     throw new Error("メールアドレスまたはパスワードが正しくありません")
                 }
 
-                // 最終ログイン日時を更新
-                await prisma.user.update({
+                // 最終ログイン日時を非同期で更新（レスポンスを待たない）
+                prisma.user.update({
                     where: { id: user.id },
                     data: { lastLoginAt: new Date() },
-                })
+                }).catch(console.error)
 
                 return {
                     id: user.id,
