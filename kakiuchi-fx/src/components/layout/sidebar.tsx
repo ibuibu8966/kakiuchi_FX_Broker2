@@ -2,8 +2,9 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { signOut, useSession } from "next-auth/react"
+import { signOut } from "next-auth/react"
 import { cn } from "@/lib/utils"
+import { useAuth } from "@/contexts/auth-context"
 
 const navigation = [
     { name: "ダッシュボード", href: "/dashboard", icon: HomeIcon },
@@ -73,7 +74,7 @@ function SupportIcon({ className }: { className?: string }) {
 
 export function Sidebar() {
     const pathname = usePathname()
-    const { data: session } = useSession()
+    const { user } = useAuth()
 
     return (
         <aside className="fixed left-0 top-0 z-40 h-screen w-64 bg-slate-900 border-r border-slate-800">
@@ -115,10 +116,10 @@ export function Sidebar() {
                 <div className="border-t border-slate-800 p-4">
                     <div className="mb-3 px-3">
                         <p className="text-sm font-medium text-white truncate">
-                            {session?.user?.name || "ユーザー"}
+                            {user?.name || "ユーザー"}
                         </p>
                         <p className="text-xs text-slate-500 truncate">
-                            {session?.user?.email}
+                            {user?.email}
                         </p>
                     </div>
                     <button

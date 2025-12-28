@@ -4,6 +4,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { signOut } from "next-auth/react"
 import { cn } from "@/lib/utils"
+import { useAuth } from "@/contexts/auth-context"
 
 const navigation = [
     { name: "ダッシュボード", href: "/admin", icon: HomeIcon },
@@ -74,6 +75,7 @@ function SettingsIcon({ className }: { className?: string }) {
 
 export function AdminSidebar() {
     const pathname = usePathname()
+    const { user } = useAuth()
 
     return (
         <aside className="fixed left-0 top-0 z-40 h-screen w-64 bg-slate-900 border-r border-slate-800">
@@ -117,6 +119,14 @@ export function AdminSidebar() {
 
                 {/* User section */}
                 <div className="border-t border-slate-800 p-4">
+                    <div className="mb-3 px-3">
+                        <p className="text-sm font-medium text-white truncate">
+                            {user?.name || "管理者"}
+                        </p>
+                        <p className="text-xs text-slate-500 truncate">
+                            {user?.email}
+                        </p>
+                    </div>
                     <Link
                         href="/dashboard"
                         className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-400 hover:text-white hover:bg-slate-800 transition-all mb-2"
