@@ -34,6 +34,7 @@ export default function AdminLoginPage() {
                 const data = await res.json()
 
                 if (data.isAdmin) {
+                    router.refresh()
                     router.push("/admin")
                 } else {
                     setError("管理者権限がありません")

@@ -34,8 +34,9 @@ function LoginForm() {
             if (result?.error) {
                 setError(result.error)
             } else {
-                router.push(callbackUrl)
+                // セッション更新後にリダイレクト
                 router.refresh()
+                router.push(callbackUrl)
             }
         } catch {
             setError("ログイン中にエラーが発生しました")
