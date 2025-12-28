@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { translateStatus, formatDate, getStatusColor } from "@/lib/utils"
 import { formatAmount } from "@/lib/utils/bigint"
 import { TransactionActionButtons } from "./transaction-actions"
+import { CreateTransactionButton } from "./create-transaction-button"
 
 export default async function AdminTransactionsPage() {
     const transactions = await prisma.transaction.findMany({
@@ -26,9 +27,12 @@ export default async function AdminTransactionsPage() {
 
     return (
         <div className="space-y-6">
-            <div>
-                <h1 className="text-3xl font-bold text-white">入出金管理（USDT）</h1>
-                <p className="text-slate-400 mt-1">入金・出金申請の承認を行います</p>
+            <div className="flex items-center justify-between">
+                <div>
+                    <h1 className="text-3xl font-bold text-white">入出金管理（USDT）</h1>
+                    <p className="text-slate-400 mt-1">入金・出金申請の承認を行います</p>
+                </div>
+                <CreateTransactionButton />
             </div>
 
             <Card className="bg-slate-900/50 border-slate-800">

@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { translateStatus, formatDate, getStatusColor } from "@/lib/utils"
 import Link from "next/link"
+import { CreateChatButton } from "./create-chat-button"
 
 export default async function AdminChatPage() {
     const chatRooms = await prisma.chatRoom.findMany({
@@ -27,11 +28,14 @@ export default async function AdminChatPage() {
 
     return (
         <div className="space-y-6">
-            <div>
-                <h1 className="text-3xl font-bold text-white">チャット管理</h1>
-                <p className="text-slate-400 mt-1">
-                    未対応: {chatRooms.filter(r => r.status === "OPEN").length}件
-                </p>
+            <div className="flex items-center justify-between">
+                <div>
+                    <h1 className="text-3xl font-bold text-white">チャット管理</h1>
+                    <p className="text-slate-400 mt-1">
+                        未対応: {chatRooms.filter(r => r.status === "OPEN").length}件
+                    </p>
+                </div>
+                <CreateChatButton />
             </div>
 
             <Card className="bg-slate-900/50 border-slate-800">
