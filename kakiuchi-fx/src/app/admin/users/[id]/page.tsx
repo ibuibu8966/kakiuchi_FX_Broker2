@@ -74,6 +74,21 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
     const [error, setError] = useState<string | null>(null)
     const [activeTab, setActiveTab] = useState<TabType>("transactions")
 
+    // モーダル状態
+    const [showTransactionModal, setShowTransactionModal] = useState(false)
+    const [showChatModal, setShowChatModal] = useState(false)
+    const [modalLoading, setModalLoading] = useState(false)
+    const [modalError, setModalError] = useState("")
+
+    // 入出金フォーム
+    const [txType, setTxType] = useState<"DEPOSIT" | "WITHDRAWAL">("DEPOSIT")
+    const [txAmount, setTxAmount] = useState("")
+    const [txNote, setTxNote] = useState("")
+
+    // チャットフォーム
+    const [chatSubject, setChatSubject] = useState("")
+    const [chatMessage, setChatMessage] = useState("")
+
     useEffect(() => {
         fetchUserDetail()
     }, [id])
@@ -116,6 +131,67 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
             RESOLVED: "bg-green-500/20 text-green-400",
         }
         return colors[status] || "bg-gray-500/20 text-gray-400"
+    }
+
+    // 入出金処理
+    const handleCreateTransaction = async (e: React.FormEvent) => {
+        e.preventDefault()
+        setModalError("")
+        setModalLoading(true)
+
+        try {
+            const res = await fetch("/api/admin/transactions/create", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    userId: id,
+                    type: txType,
+                    amount: txAmount,
+                    note: txNote,
+                }),
+            })
+
+            const result = await res.json()
+            if (!res.ok) throw new Error(result.error || "エラーが発生しました")
+
+            setShowTransactionModal(false)
+            setTxAmount("")
+            setTxNote("")
+            fetchUserDetail() // データ再取得
+        } catch (err) {
+            setModalError(err instanceof Error ? err.message : "エラーが発生しました")
+        } finally {
+            setModalLoading(false)
+        }
+    }
+
+    // チャット開始処理
+    const handleCreateChat = async (e: React.FormEvent) => {
+        e.preventDefault()
+        setModalError("")
+        setModalLoading(true)
+
+        try {
+            const res = await fetch("/api/admin/chat/create", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    userId: id,
+                    subject: chatSubject,
+                    message: chatMessage,
+                }),
+            })
+
+            const result = await res.json()
+            if (!res.ok) throw new Error(result.error || "エラーが発生しました")
+
+            // チャットルームに遷移
+            router.push(`/admin/chat/${result.chatRoom.id}`)
+        } catch (err) {
+            setModalError(err instanceof Error ? err.message : "エラーが発生しました")
+        } finally {
+            setModalLoading(false)
+        }
     }
 
     if (loading) {
@@ -161,6 +237,20 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
                         </span>
                     </div>
                     <p className="text-slate-400 mt-1">{data.user.email}</p>
+                </div>
+                <div className="flex gap-2">
+                    <button
+                        onClick={() => setShowTransactionModal(true)}
+                        className="px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:from-green-700 hover:to-emerald-700 transition-all font-medium text-sm"
+                    >
+                        入出金
+                    </button>
+                    <button
+                        onClick={() => setShowChatModal(true)}
+                        className="px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all font-medium text-sm"
+                    >
+                        チャット開始
+                    </button>
                 </div>
             </div>
 
@@ -385,6 +475,137 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
                     )}
                 </CardContent>
             </Card>
+
+            {/* 入出金モーダル */}
+            {showTransactionModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+                    <div className="bg-slate-900 border border-slate-700 rounded-xl p-6 w-full max-w-md mx-4">
+                        <h2 className="text-xl font-bold text-white mb-4">入出金 - {data.user.name}</h2>
+                        <form onSubmit={handleCreateTransaction} className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-slate-400 mb-1">種別</label>
+                                <div className="flex gap-4">
+                                    <label className="flex items-center gap-2 cursor-pointer">
+                                        <input
+                                            type="radio"
+                                            checked={txType === "DEPOSIT"}
+                                            onChange={() => setTxType("DEPOSIT")}
+                                            className="text-green-600"
+                                        />
+                                        <span className="text-green-400">入金</span>
+                                    </label>
+                                    <label className="flex items-center gap-2 cursor-pointer">
+                                        <input
+                                            type="radio"
+                                            checked={txType === "WITHDRAWAL"}
+                                            onChange={() => setTxType("WITHDRAWAL")}
+                                            className="text-orange-600"
+                                        />
+                                        <span className="text-orange-400">出金</span>
+                                    </label>
+                                </div>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-400 mb-1">金額 (USDT)</label>
+                                <input
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    value={txAmount}
+                                    onChange={(e) => setTxAmount(e.target.value)}
+                                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white"
+                                    placeholder="例: 1000.00"
+                                    required
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-400 mb-1">メモ（任意）</label>
+                                <input
+                                    type="text"
+                                    value={txNote}
+                                    onChange={(e) => setTxNote(e.target.value)}
+                                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white"
+                                    placeholder="例: 初回ボーナス"
+                                />
+                            </div>
+                            {modalError && (
+                                <div className="p-3 bg-red-500/20 border border-red-500/50 rounded-lg text-red-400 text-sm">
+                                    {modalError}
+                                </div>
+                            )}
+                            <div className="flex gap-3 pt-2">
+                                <button
+                                    type="button"
+                                    onClick={() => { setShowTransactionModal(false); setModalError("") }}
+                                    className="flex-1 px-4 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-600"
+                                >
+                                    キャンセル
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={modalLoading}
+                                    className="flex-1 px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:from-green-700 hover:to-emerald-700 disabled:opacity-50"
+                                >
+                                    {modalLoading ? "処理中..." : "実行"}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* チャット開始モーダル */}
+            {showChatModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+                    <div className="bg-slate-900 border border-slate-700 rounded-xl p-6 w-full max-w-md mx-4">
+                        <h2 className="text-xl font-bold text-white mb-4">チャット開始 - {data.user.name}</h2>
+                        <form onSubmit={handleCreateChat} className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-slate-400 mb-1">件名（任意）</label>
+                                <input
+                                    type="text"
+                                    value={chatSubject}
+                                    onChange={(e) => setChatSubject(e.target.value)}
+                                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white"
+                                    placeholder="例: 入金確認のお願い"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-400 mb-1">メッセージ</label>
+                                <textarea
+                                    value={chatMessage}
+                                    onChange={(e) => setChatMessage(e.target.value)}
+                                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white resize-none"
+                                    rows={4}
+                                    placeholder="メッセージを入力してください"
+                                    required
+                                />
+                            </div>
+                            {modalError && (
+                                <div className="p-3 bg-red-500/20 border border-red-500/50 rounded-lg text-red-400 text-sm">
+                                    {modalError}
+                                </div>
+                            )}
+                            <div className="flex gap-3 pt-2">
+                                <button
+                                    type="button"
+                                    onClick={() => { setShowChatModal(false); setModalError("") }}
+                                    className="flex-1 px-4 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-600"
+                                >
+                                    キャンセル
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={modalLoading}
+                                    className="flex-1 px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 disabled:opacity-50"
+                                >
+                                    {modalLoading ? "送信中..." : "送信"}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }
