@@ -7,6 +7,29 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
+// フルスクリーンローディングコンポーネント
+function FullScreenLoading() {
+    return (
+        <div className="fixed inset-0 bg-slate-950 flex flex-col items-center justify-center z-[9999]">
+            <div className="relative">
+                <div className="w-20 h-20 border-4 border-red-500/30 border-t-red-500 rounded-full animate-spin"></div>
+                <div className="absolute inset-0 flex items-center justify-center">
+                    <svg className="w-8 h-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    </svg>
+                </div>
+            </div>
+            <p className="mt-8 text-white text-xl font-medium">ログイン中...</p>
+            <p className="mt-2 text-slate-400 text-sm">管理者権限を確認しています</p>
+            <div className="mt-6 flex gap-1">
+                <div className="w-2 h-2 bg-red-500 rounded-full animate-bounce" style={{ animationDelay: "0ms" }}></div>
+                <div className="w-2 h-2 bg-red-500 rounded-full animate-bounce" style={{ animationDelay: "150ms" }}></div>
+                <div className="w-2 h-2 bg-red-500 rounded-full animate-bounce" style={{ animationDelay: "300ms" }}></div>
+            </div>
+        </div>
+    )
+}
+
 export default function AdminLoginPage() {
     const router = useRouter()
     const [email, setEmail] = useState("")
@@ -38,6 +61,7 @@ export default function AdminLoginPage() {
                     // ログイン成功 - ローディング状態を維持したままリダイレクト
                     router.refresh()
                     router.push("/admin")
+                    // リダイレクト中もローディング表示を維持
                 } else {
                     setError("管理者権限がありません")
                     await signOut({ redirect: false })
@@ -50,20 +74,9 @@ export default function AdminLoginPage() {
         }
     }
 
-    // フルスクリーンローディング表示
-    if (isLoading) {
-        return (
-            <div className="fixed inset-0 bg-slate-950 flex flex-col items-center justify-center z-50">
-                <div className="relative">
-                    <div className="w-16 h-16 border-4 border-red-500/30 border-t-red-500 rounded-full animate-spin"></div>
-                </div>
-                <p className="mt-6 text-white text-lg font-medium">ログイン中...</p>
-                <p className="mt-2 text-slate-400 text-sm">しばらくお待ちください</p>
-            </div>
-        )
-    }
-
     return (
+        <>
+            {isLoading && <FullScreenLoading />}
         <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
             <Card className="w-full max-w-md bg-slate-900/50 border-slate-800">
                 <CardHeader className="text-center">
@@ -113,5 +126,6 @@ export default function AdminLoginPage() {
                 </CardContent>
             </Card>
         </div>
+        </>
     )
 }
