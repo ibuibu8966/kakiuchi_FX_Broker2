@@ -85,7 +85,8 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
             if (res.ok) {
                 setData(result)
             } else {
-                setError(result.error || `エラー: ${res.status}`)
+                const details = result.details ? ` (${result.details})` : ""
+                setError((result.error || `エラー: ${res.status}`) + details)
             }
         } catch (err) {
             setError(`ネットワークエラー: ${err instanceof Error ? err.message : "不明"}`)

@@ -115,8 +115,9 @@ export async function GET(
         return NextResponse.json(response)
     } catch (error) {
         console.error("Get user detail error:", error)
+        const errorMessage = error instanceof Error ? error.message : "Unknown error"
         return NextResponse.json(
-            { error: "ユーザー情報の取得に失敗しました" },
+            { error: "ユーザー情報の取得に失敗しました", details: errorMessage },
             { status: 500 }
         )
     }
