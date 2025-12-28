@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { signIn } from "next-auth/react"
+import { signIn, signOut } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -37,7 +37,7 @@ export default function AdminLoginPage() {
                     router.push("/admin")
                 } else {
                     setError("管理者権限がありません")
-                    await signIn("credentials", { redirect: false }) // sign out
+                    await signOut({ redirect: false })
                 }
             }
         } catch {
