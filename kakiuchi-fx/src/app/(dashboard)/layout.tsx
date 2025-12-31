@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation"
 import { auth } from "@/lib/auth"
-import { Sidebar } from "@/components/layout/sidebar"
+import { DashboardWrapper } from "@/components/layout/dashboard-wrapper"
 
 export default async function DashboardLayout({
     children,
@@ -15,12 +15,9 @@ export default async function DashboardLayout({
 
     return (
         <div className="min-h-screen bg-slate-950">
-            <Sidebar />
-            <main className="ml-64 min-h-screen">
-                <div className="p-6">
-                    {children}
-                </div>
-            </main>
+            <DashboardWrapper>
+                {children}
+            </DashboardWrapper>
         </div>
     )
 }

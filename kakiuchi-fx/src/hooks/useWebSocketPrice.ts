@@ -9,11 +9,17 @@ interface PriceData {
     timestamp: string
 }
 
+// 市場クローズ判定: この秒数以上価格更新がなければクローズと判定
+const MARKET_CLOSED_THRESHOLD_MS = 10000 // 10秒
+
 export function useWebSocketPrice(pollingMs = 200) {
     const [price, setPrice] = useState<PriceData | null>(null)
     const [isConnected, setIsConnected] = useState(false)
+    const [isMarketClosed, setIsMarketClosed] = useState(false)
     const isMountedRef = useRef(true)
     const lastValidPriceRef = useRef<{ bid: number; ask: number } | null>(null)
+    const lastPriceUpdateTimeRef = useRef<number>(Date.now())
+    const lastReceivedTimestampRef = useRef<string>("")
 
     useEffect(() => {
         isMountedRef.current = true
@@ -25,6 +31,7 @@ export function useWebSocketPrice(pollingMs = 200) {
                     const data = await res.json()
                     const newBid = data.bid
                     const newAsk = data.ask
+                    const newTimestamp = data.timestamp
 
                     // 価格フィルタリング: 範囲外チェック (GBPJPYは180-230の範囲)
                     if (newBid < 180 || newBid > 230 || newAsk < 180 || newAsk > 230) {
@@ -42,13 +49,20 @@ export function useWebSocketPrice(pollingMs = 200) {
                         }
                     }
 
+                    // タイムスタンプが変わっていれば新しい価格
+                    if (newTimestamp !== lastReceivedTimestampRef.current) {
+                        lastReceivedTimestampRef.current = newTimestamp
+                        lastPriceUpdateTimeRef.current = Date.now()
+                        setIsMarketClosed(false)
+                    }
+
                     // 正常な価格を保存
                     lastValidPriceRef.current = { bid: newBid, ask: newAsk }
                     setPrice({
                         symbol: data.symbol || "GBPJPY",
                         bid: newBid,
                         ask: newAsk,
-                        timestamp: data.timestamp,
+                        timestamp: newTimestamp,
                     })
                     setIsConnected(true)
                 }
@@ -59,15 +73,24 @@ export function useWebSocketPrice(pollingMs = 200) {
             }
         }
 
+        // 市場クローズ判定のチェッカー
+        const checkMarketClosed = () => {
+            const timeSinceLastUpdate = Date.now() - lastPriceUpdateTimeRef.current
+            if (timeSinceLastUpdate > MARKET_CLOSED_THRESHOLD_MS && isMountedRef.current) {
+                setIsMarketClosed(true)
+            }
+        }
+
         fetchPrice()
-        const interval = setInterval(fetchPrice, pollingMs)
+        const priceInterval = setInterval(fetchPrice, pollingMs)
+        const marketCheckInterval = setInterval(checkMarketClosed, 1000)
 
         return () => {
             isMountedRef.current = false
-            clearInterval(interval)
+            clearInterval(priceInterval)
+            clearInterval(marketCheckInterval)
         }
     }, [pollingMs])
 
-    return { price, isConnected }
+    return { price, isConnected, isMarketClosed }
 }
-

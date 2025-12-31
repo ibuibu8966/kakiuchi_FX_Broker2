@@ -20,25 +20,6 @@ model User {
   name          String
   phone         String?
 
-  // KYC情報 - 住所
-  postalCode    String?
-  prefecture    String?
-  city          String?
-  address1      String?
-  address2      String?
-
-  // KYC情報 - 本人確認書類
-  idDocumentType        IdDocumentType?
-  idDocumentUrl         String?
-  addressDocumentType   AddressDocumentType?
-  addressDocumentUrl    String?
-
-  // KYCステータス
-  kycStatus         KycStatus @default(PENDING)
-  kycSubmittedAt    DateTime?
-  kycVerifiedAt     DateTime?
-  kycRejectedReason String?
-
   // ステータス
   role          UserRole  @default(USER)
   isActive      Boolean   @default(true)
@@ -60,27 +41,6 @@ model User {
 enum UserRole {
   USER
   ADMIN
-}
-
-enum KycStatus {
-  PENDING
-  SUBMITTED
-  VERIFIED
-  REJECTED
-}
-
-enum IdDocumentType {
-  DRIVERS_LICENSE
-  PASSPORT
-  MY_NUMBER_CARD
-  RESIDENCE_CARD
-}
-
-enum AddressDocumentType {
-  UTILITY_BILL
-  BANK_STATEMENT
-  TAX_DOCUMENT
-  RESIDENCE_CERT
 }
 
 // ============================================
@@ -214,10 +174,6 @@ model Position {
   closeUsdJpyRate  Float?        // 決済時のUSD/JPYレート
   realizedPnlUsdt  Float?        // USDT建て確定損益
 
-  // スワップ関連
-  accumulatedSwap    BigInt    @default(0)  // 累積スワップ（×100、USDT）
-  lastSwapAccrualAt  DateTime?              // 最後にスワップを加算した日時
-
   openedAt        DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
   closedAt        DateTime?
@@ -333,14 +289,13 @@ model SystemSettings {
   maxLotSize      BigInt   @default(100000)
   liquidationLevel Int     @default(20)
 
-  // スワップレート設定（1ロットあたり/日、×100でUSDT）
-  swapRateBuy       BigInt   @default(0)   // 買いポジションのスワップ（マイナスなら支払い）
-  swapRateSell      BigInt   @default(0)   // 売りポジションのスワップ
-  swapCalculationHour Int    @default(7)   // スワップ計算時間（日本時間、デフォルト7時）
+  // スワップポイント設定（ポイント/日）
+  swapBuy         Float    @default(0)  // 買いポジションのスワップポイント
+  swapSell        Float    @default(0)  // 売りポジションのスワップポイント
 
-  // 入金設定
-  depositQrCodeUrl     String?  // QRコード画像のURL
-  depositWalletAddress String?  // ウォレットアドレス（テキスト）
+  // 入金用ウォレット設定
+  depositWalletAddress String?  // 入金先USDTウォレットアドレス（TRC20）
+  depositQrImageUrl    String?  // QRコード画像URL
 
   updatedAt       DateTime @updatedAt
   updatedBy       String?

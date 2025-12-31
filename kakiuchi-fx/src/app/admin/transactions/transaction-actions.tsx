@@ -10,13 +10,15 @@ interface TransactionActionButtonsProps {
     type: string
     accountId: string
     amount: string
+    onSuccess?: () => void
 }
 
 export function TransactionActionButtons({
     transactionId,
     type,
     accountId,
-    amount
+    amount,
+    onSuccess
 }: TransactionActionButtonsProps) {
     const router = useRouter()
     const [isLoading, setIsLoading] = useState(false)
@@ -41,7 +43,11 @@ export function TransactionActionButtons({
 
             if (response.ok) {
                 setShowModal(false)
-                router.refresh()
+                if (onSuccess) {
+                    onSuccess()
+                } else {
+                    router.refresh()
+                }
             }
         } catch (error) {
             console.error("approve error:", error)
@@ -60,7 +66,11 @@ export function TransactionActionButtons({
             })
 
             if (response.ok) {
-                router.refresh()
+                if (onSuccess) {
+                    onSuccess()
+                } else {
+                    router.refresh()
+                }
             }
         } catch (error) {
             console.error("reject error:", error)

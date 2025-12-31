@@ -9,11 +9,10 @@ interface SystemSettings {
     spread: number
     commission: number
     losscut_level: number
-    swap_rate_buy: number
-    swap_rate_sell: number
-    swap_calculation_hour: number
-    deposit_qr_code_url: string | null
-    deposit_wallet_address: string | null
+    swapBuy: number
+    swapSell: number
+    depositWalletAddress: string
+    depositQrImageUrl: string
 }
 
 export default function AdminSettingsPage() {
@@ -21,15 +20,11 @@ export default function AdminSettingsPage() {
         spread: 20, // 2.0 pips
         commission: 0,
         losscut_level: 20,
-        swap_rate_buy: 0,
-        swap_rate_sell: 0,
-        swap_calculation_hour: 7,
-        deposit_qr_code_url: null,
-        deposit_wallet_address: null,
+        swapBuy: 0,
+        swapSell: 0,
+        depositWalletAddress: "",
+        depositQrImageUrl: "",
     })
-    const [qrUploading, setQrUploading] = useState(false)
-    const [qrFile, setQrFile] = useState<File | null>(null)
-    const [qrPreview, setQrPreview] = useState<string | null>(null)
     const [isLoading, setIsLoading] = useState(true)
     const [isSaving, setIsSaving] = useState(false)
     const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
@@ -74,50 +69,6 @@ export default function AdminSettingsPage() {
             setMessage({ type: "error", text: "保存に失敗しました" })
         } finally {
             setIsSaving(false)
-        }
-    }
-
-    const handleQrFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0]
-        if (file) {
-            setQrFile(file)
-            const reader = new FileReader()
-            reader.onloadend = () => {
-                setQrPreview(reader.result as string)
-            }
-            reader.readAsDataURL(file)
-        }
-    }
-
-    const handleQrUpload = async () => {
-        if (!qrFile) return
-
-        setQrUploading(true)
-        setMessage(null)
-
-        try {
-            const formData = new FormData()
-            formData.append("file", qrFile)
-
-            const response = await fetch("/api/admin/settings/upload-qr", {
-                method: "POST",
-                body: formData,
-            })
-
-            const data = await response.json()
-
-            if (response.ok) {
-                setSettings(prev => ({ ...prev, deposit_qr_code_url: data.url }))
-                setQrFile(null)
-                setQrPreview(null)
-                setMessage({ type: "success", text: "QRコードをアップロードしました" })
-            } else {
-                throw new Error(data.error || "アップロードに失敗しました")
-            }
-        } catch (error) {
-            setMessage({ type: "error", text: error instanceof Error ? error.message : "アップロードに失敗しました" })
-        } finally {
-            setQrUploading(false)
         }
     }
 
@@ -210,124 +161,89 @@ export default function AdminSettingsPage() {
                     </CardContent>
                 </Card>
 
-                {/* スワップ設定 */}
+                {/* スワップポイント設定 */}
                 <Card className="bg-slate-900/50 border-slate-800">
                     <CardHeader>
-                        <CardTitle className="text-white">スワップ設定</CardTitle>
+                        <CardTitle className="text-white">スワップポイント設定</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="text-sm text-slate-400 block mb-2">
+                                    買いスワップ（ポイント/日）
+                                </label>
+                                <Input
+                                    type="number"
+                                    value={settings.swapBuy}
+                                    onChange={(e) => setSettings(prev => ({ ...prev, swapBuy: parseFloat(e.target.value) || 0 }))}
+                                    step="0.1"
+                                    className="bg-slate-800 border-slate-700 text-white"
+                                />
+                            </div>
+                            <div>
+                                <label className="text-sm text-slate-400 block mb-2">
+                                    売りスワップ（ポイント/日）
+                                </label>
+                                <Input
+                                    type="number"
+                                    value={settings.swapSell}
+                                    onChange={(e) => setSettings(prev => ({ ...prev, swapSell: parseFloat(e.target.value) || 0 }))}
+                                    step="0.1"
+                                    className="bg-slate-800 border-slate-700 text-white"
+                                />
+                            </div>
+                        </div>
+                        <p className="text-xs text-slate-500">
+                            正の値: 受取 / 負の値: 支払（例: BUY=-5.0, SELL=+2.0）
+                        </p>
+                    </CardContent>
+                </Card>
+
+                {/* 入金用ウォレット設定 */}
+                <Card className="bg-slate-900/50 border-slate-800">
+                    <CardHeader>
+                        <CardTitle className="text-white">入金用ウォレット設定</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
                         <div>
                             <label className="text-sm text-slate-400 block mb-2">
-                                買いスワップレート（USDT/ロット/日）
-                            </label>
-                            <Input
-                                type="number"
-                                step="0.01"
-                                value={settings.swap_rate_buy / 100}
-                                onChange={(e) => setSettings(prev => ({ ...prev, swap_rate_buy: Math.round(parseFloat(e.target.value || "0") * 100) }))}
-                                className="bg-slate-800 border-slate-700 text-white max-w-xs"
-                            />
-                            <p className="text-xs text-slate-500 mt-1">
-                                マイナス値で顧客から徴収、プラス値で顧客に付与
-                            </p>
-                        </div>
-                        <div>
-                            <label className="text-sm text-slate-400 block mb-2">
-                                売りスワップレート（USDT/ロット/日）
-                            </label>
-                            <Input
-                                type="number"
-                                step="0.01"
-                                value={settings.swap_rate_sell / 100}
-                                onChange={(e) => setSettings(prev => ({ ...prev, swap_rate_sell: Math.round(parseFloat(e.target.value || "0") * 100) }))}
-                                className="bg-slate-800 border-slate-700 text-white max-w-xs"
-                            />
-                            <p className="text-xs text-slate-500 mt-1">
-                                マイナス値で顧客から徴収、プラス値で顧客に付与
-                            </p>
-                        </div>
-                        <div>
-                            <label className="text-sm text-slate-400 block mb-2">
-                                スワップ計算時間（日本時間）
-                            </label>
-                            <Input
-                                type="number"
-                                value={settings.swap_calculation_hour}
-                                onChange={(e) => setSettings(prev => ({ ...prev, swap_calculation_hour: parseInt(e.target.value) || 7 }))}
-                                min="0"
-                                max="23"
-                                className="bg-slate-800 border-slate-700 text-white max-w-xs"
-                            />
-                            <p className="text-xs text-slate-500 mt-1">
-                                毎日この時間にスワップを計算（水曜日は3日分）
-                            </p>
-                        </div>
-                    </CardContent>
-                </Card>
-
-                {/* 入金設定 */}
-                <Card className="bg-slate-900/50 border-slate-800">
-                    <CardHeader>
-                        <CardTitle className="text-white">入金設定（USDT TRC20）</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-6">
-                        {/* QRコード */}
-                        <div>
-                            <label className="text-sm text-slate-400 block mb-2">
-                                入金用QRコード
-                            </label>
-                            <div className="flex gap-4 items-start">
-                                <div className="flex-1">
-                                    <input
-                                        type="file"
-                                        accept="image/*"
-                                        onChange={handleQrFileChange}
-                                        className="block w-full text-sm text-slate-400
-                                            file:mr-4 file:py-2 file:px-4
-                                            file:rounded-lg file:border-0
-                                            file:text-sm file:font-semibold
-                                            file:bg-purple-600 file:text-white
-                                            hover:file:bg-purple-700"
-                                    />
-                                    {qrFile && (
-                                        <Button
-                                            onClick={handleQrUpload}
-                                            disabled={qrUploading}
-                                            className="mt-2"
-                                            size="sm"
-                                        >
-                                            {qrUploading ? "アップロード中..." : "アップロード"}
-                                        </Button>
-                                    )}
-                                </div>
-                                {/* プレビュー */}
-                                <div className="w-32 h-32 bg-slate-800 rounded-lg flex items-center justify-center overflow-hidden">
-                                    {qrPreview ? (
-                                        <img src={qrPreview} alt="QR Preview" className="w-full h-full object-contain" />
-                                    ) : settings.deposit_qr_code_url ? (
-                                        <img src={settings.deposit_qr_code_url} alt="Current QR" className="w-full h-full object-contain" />
-                                    ) : (
-                                        <span className="text-slate-500 text-xs text-center">QRコード<br />未設定</span>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* ウォレットアドレス */}
-                        <div>
-                            <label className="text-sm text-slate-400 block mb-2">
-                                ウォレットアドレス（TRC20）
+                                USDTウォレットアドレス（TRC20）
                             </label>
                             <Input
                                 type="text"
-                                value={settings.deposit_wallet_address || ""}
-                                onChange={(e) => setSettings(prev => ({ ...prev, deposit_wallet_address: e.target.value }))}
-                                placeholder="TRxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                                value={settings.depositWalletAddress || ""}
+                                onChange={(e) => setSettings(prev => ({ ...prev, depositWalletAddress: e.target.value }))}
+                                placeholder="T..."
                                 className="bg-slate-800 border-slate-700 text-white font-mono"
                             />
                             <p className="text-xs text-slate-500 mt-1">
-                                顧客の入金画面に表示されます
+                                顧客の入金画面に表示されるアドレス
                             </p>
+                        </div>
+                        <div>
+                            <label className="text-sm text-slate-400 block mb-2">
+                                QRコード画像URL
+                            </label>
+                            <Input
+                                type="text"
+                                value={settings.depositQrImageUrl || ""}
+                                onChange={(e) => setSettings(prev => ({ ...prev, depositQrImageUrl: e.target.value }))}
+                                placeholder="https://..."
+                                className="bg-slate-800 border-slate-700 text-white"
+                            />
+                            <p className="text-xs text-slate-500 mt-1">
+                                外部URLまたは/uploads/qr.pngの形式で設定
+                            </p>
+                            {settings.depositQrImageUrl && (
+                                <div className="mt-3 p-3 bg-white rounded-lg inline-block">
+                                    <img
+                                        src={settings.depositQrImageUrl}
+                                        alt="QR Preview"
+                                        className="w-32 h-32 object-contain"
+                                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
+                                    />
+                                </div>
+                            )}
                         </div>
                     </CardContent>
                 </Card>

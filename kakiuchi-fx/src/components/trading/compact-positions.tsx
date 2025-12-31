@@ -13,7 +13,12 @@ interface Position {
     takeProfit: number | null
     pnl: number
     currentPrice: number
-    accumulatedSwap: number
+    openedAt: string
+}
+
+interface SwapSettings {
+    swapBuy: number
+    swapSell: number
 }
 
 interface Order {
@@ -59,6 +64,7 @@ export function CompactPositions({ currentBid, currentAsk }: CompactPositionsPro
     const [activeTab, setActiveTab] = useState<TabType>("positions")
     const [editing, setEditing] = useState<EditingState | null>(null)
     const [savingSlTp, setSavingSlTp] = useState(false)
+    const [swapSettings, setSwapSettings] = useState<SwapSettings>({ swapBuy: 0, swapSell: 0 })
     const inputRef = useRef<HTMLInputElement>(null)
 
     const fetchData = useCallback(async () => {
@@ -81,6 +87,27 @@ export function CompactPositions({ currentBid, currentAsk }: CompactPositionsPro
         return () => clearInterval(interval)
     }, [fetchData])
 
+    // スワップ設定を取得
+    useEffect(() => {
+        const fetchSwapSettings = async () => {
+            try {
+                const res = await fetch("/api/admin/settings")
+                if (res.ok) {
+                    const data = await res.json()
+                    if (data.settings) {
+                        setSwapSettings({
+                            swapBuy: data.settings.swapBuy || 0,
+                            swapSell: data.settings.swapSell || 0,
+                        })
+                    }
+                }
+            } catch {
+                // ignore
+            }
+        }
+        fetchSwapSettings()
+    }, [])
+
     // 含み損益を現在価格で再計算
     const calculatePnl = (position: Position) => {
         const closePrice = position.side === "BUY" ? currentBid : currentAsk
@@ -90,7 +117,17 @@ export function CompactPositions({ currentBid, currentAsk }: CompactPositionsPro
         return diff * position.quantity * 10000 // 1ロット = 10000 GBP
     }
 
+    // スワップ計算（保有日数 × スワップレート × ロット数）
+    const calculateSwap = (position: Position) => {
+        const openDate = new Date(position.openedAt)
+        const now = new Date()
+        const days = Math.floor((now.getTime() - openDate.getTime()) / (1000 * 60 * 60 * 24))
+        const swapRate = position.side === "BUY" ? swapSettings.swapBuy : swapSettings.swapSell
+        return days * swapRate * position.quantity
+    }
+
     const totalPnl = positions.reduce((acc, pos) => acc + calculatePnl(pos), 0)
+    const totalSwap = positions.reduce((acc, pos) => acc + calculateSwap(pos), 0)
 
     const handleClosePosition = async (id: string) => {
         if (!confirm("このポジションを決済しますか？")) return
@@ -233,14 +270,21 @@ export function CompactPositions({ currentBid, currentAsk }: CompactPositionsPro
                 >
                     履歴
                 </button>
-                {/* トータル損益 */}
-                <div className="ml-auto px-4 py-2 flex items-center gap-2 border-l border-slate-800">
-                    <span className="text-xs text-slate-500">損益:</span>
-                    <span className={`text-sm font-bold font-mono ${currentBid <= 0 ? 'text-slate-500' :
-                        totalPnl >= 0 ? 'text-green-400' : 'text-red-400'
-                        }`}>
-                        {currentBid <= 0 ? "---" : `$${totalPnl.toFixed(2)}`}
-                    </span>
+                <div className="ml-auto px-4 py-2 flex items-center gap-4 border-l border-slate-800">
+                    <div>
+                        <span className="text-xs text-slate-500">損益:</span>
+                        <span className={`text-sm font-bold font-mono ml-1 ${currentBid <= 0 ? 'text-slate-500' :
+                            totalPnl >= 0 ? 'text-green-400' : 'text-red-400'
+                            }`}>
+                            {currentBid <= 0 ? "---" : `$${totalPnl.toFixed(2)}`}
+                        </span>
+                    </div>
+                    <div>
+                        <span className="text-xs text-slate-500">スワップ:</span>
+                        <span className={`text-sm font-bold font-mono ml-1 ${totalSwap >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                            {totalSwap >= 0 ? "+" : ""}{totalSwap.toFixed(1)}pt
+                        </span>
+                    </div>
                 </div>
             </div>
 
@@ -357,11 +401,16 @@ export function CompactPositions({ currentBid, currentAsk }: CompactPositionsPro
                                                     </button>
                                                 )}
                                             </td>
-                                            {/* スワップ列 */}
-                                            <td className={`py-1.5 px-2 text-right font-mono text-xs ${
-                                                pos.accumulatedSwap >= 0 ? 'text-green-400' : 'text-red-400'
-                                            }`}>
-                                                {pos.accumulatedSwap === 0 ? "---" : `$${pos.accumulatedSwap.toFixed(2)}`}
+                                            {/* スワップセル */}
+                                            <td className="py-1.5 px-2 text-right">
+                                                {(() => {
+                                                    const swap = calculateSwap(pos)
+                                                    return (
+                                                        <span className={`font-mono text-xs ${swap >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                                            {swap >= 0 ? "+" : ""}{swap.toFixed(1)}
+                                                        </span>
+                                                    )
+                                                })()}
                                             </td>
                                             <td className={`py-1.5 px-2 text-right font-mono font-medium ${currentBid <= 0 ? 'text-slate-500' :
                                                 pnl >= 0 ? 'text-green-400' : 'text-red-400'

@@ -103,8 +103,8 @@ async function main() {
     const chatUsers = accounts.slice(0, 3)
     const chatMessages = [
         { subject: "入金について", messages: ["入金申請をしましたが、いつ反映されますか？", "確認中です。少々お待ちください。", "ありがとうございます。"] },
-        { subject: "出金について", messages: ["出金申請の状況を教えてください。"] },
-        { subject: "取引について", messages: ["取引の方法を教えてください。"] },
+        { subject: "取引について", messages: ["取引画面の使い方を教えてください。"] },
+        { subject: "出金手続きについて", messages: ["出金申請の状況を教えてください。"] },
     ]
 
     for (let i = 0; i < chatUsers.length; i++) {

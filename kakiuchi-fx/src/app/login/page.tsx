@@ -8,28 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 
-// フルスクリーンローディングコンポーネント
-function FullScreenLoading() {
-    return (
-        <div className="fixed inset-0 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex flex-col items-center justify-center z-[9999]">
-            <div className="relative">
-                <div className="w-20 h-20 border-4 border-blue-500/30 border-t-blue-500 rounded-full animate-spin"></div>
-                <div className="absolute inset-0 flex items-center justify-center">
-                    <span className="text-blue-500 text-xl font-bold">K</span>
-                </div>
-            </div>
-            <p className="mt-8 text-white text-xl font-medium">ログイン中...</p>
-            <p className="mt-2 text-slate-400 text-sm">しばらくお待ちください</p>
-            <div className="mt-6 flex gap-1">
-                <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: "0ms" }}></div>
-                <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: "150ms" }}></div>
-                <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: "300ms" }}></div>
-            </div>
-        </div>
-    )
-}
-
-function LoginForm({ onLoadingChange }: { onLoadingChange: (loading: boolean) => void }) {
+function LoginForm() {
     const router = useRouter()
     const searchParams = useSearchParams()
     const callbackUrl = searchParams.get("callbackUrl") || "/dashboard"
@@ -44,7 +23,6 @@ function LoginForm({ onLoadingChange }: { onLoadingChange: (loading: boolean) =>
         e.preventDefault()
         setError("")
         setIsLoading(true)
-        onLoadingChange(true)
 
         try {
             const result = await signIn("credentials", {
@@ -55,18 +33,15 @@ function LoginForm({ onLoadingChange }: { onLoadingChange: (loading: boolean) =>
 
             if (result?.error) {
                 setError(result.error)
-                setIsLoading(false)
-                onLoadingChange(false)
-            } else {
-                // ログイン成功 - ローディング状態を維持したままリダイレクト
+            } else if (result?.ok) {
+                // セッション更新を待ってからリダイレクト
                 router.refresh()
                 router.push(callbackUrl)
-                // リダイレクト中もローディング表示を維持（setIsLoading(false)を呼ばない）
             }
         } catch {
             setError("ログイン中にエラーが発生しました")
+        } finally {
             setIsLoading(false)
-            onLoadingChange(false)
         }
     }
 
@@ -156,22 +131,17 @@ function LoginForm({ onLoadingChange }: { onLoadingChange: (loading: boolean) =>
 }
 
 export default function LoginPage() {
-    const [isLoading, setIsLoading] = useState(false)
-
     return (
-        <>
-            {isLoading && <FullScreenLoading />}
-            <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4">
-                {/* Background decoration */}
-                <div className="absolute inset-0 overflow-hidden">
-                    <div className="absolute -top-40 -right-40 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl" />
-                    <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-purple-500/10 rounded-full blur-3xl" />
-                </div>
-
-                <Suspense fallback={<div className="text-white">読み込み中...</div>}>
-                    <LoginForm onLoadingChange={setIsLoading} />
-                </Suspense>
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4">
+            {/* Background decoration */}
+            <div className="absolute inset-0 overflow-hidden">
+                <div className="absolute -top-40 -right-40 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl" />
+                <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-purple-500/10 rounded-full blur-3xl" />
             </div>
-        </>
+
+            <Suspense fallback={<div className="text-white">読み込み中...</div>}>
+                <LoginForm />
+            </Suspense>
+        </div>
     )
 }

@@ -4,11 +4,7 @@ import { prisma } from "@/lib/prisma"
 
 export async function GET() {
     try {
-        const session = await auth()
-        if (!session?.user?.id || session.user.role !== "ADMIN") {
-            return NextResponse.json({ error: "権限がありません" }, { status: 403 })
-        }
-
+        // 設定取得は認証不要（ウォレットアドレスは顧客も見る必要があるため）
         const settings = await prisma.systemSettings.findFirst()
 
         return NextResponse.json({
@@ -16,11 +12,10 @@ export async function GET() {
                 spread: settings.spreadMarkup,
                 commission: Number(settings.commissionPerLot),
                 losscut_level: settings.liquidationLevel,
-                swap_rate_buy: Number(settings.swapRateBuy),
-                swap_rate_sell: Number(settings.swapRateSell),
-                swap_calculation_hour: settings.swapCalculationHour,
-                deposit_qr_code_url: settings.depositQrCodeUrl,
-                deposit_wallet_address: settings.depositWalletAddress,
+                swapBuy: settings.swapBuy,
+                swapSell: settings.swapSell,
+                depositWalletAddress: settings.depositWalletAddress,
+                depositQrImageUrl: settings.depositQrImageUrl,
             } : null,
         })
     } catch (error) {
@@ -40,7 +35,7 @@ export async function POST(request: Request) {
         }
 
         const body = await request.json()
-        const { spread, commission, losscut_level, swap_rate_buy, swap_rate_sell, swap_calculation_hour, deposit_wallet_address } = body
+        const { spread, commission, losscut_level, swapBuy, swapSell, depositWalletAddress, depositQrImageUrl } = body
 
         // 既存設定を取得または作成
         const existingSettings = await prisma.systemSettings.findFirst()
@@ -52,10 +47,10 @@ export async function POST(request: Request) {
                     spreadMarkup: spread,
                     commissionPerLot: BigInt(commission),
                     liquidationLevel: losscut_level,
-                    swapRateBuy: BigInt(swap_rate_buy ?? 0),
-                    swapRateSell: BigInt(swap_rate_sell ?? 0),
-                    swapCalculationHour: swap_calculation_hour ?? 7,
-                    depositWalletAddress: deposit_wallet_address ?? undefined,
+                    swapBuy: swapBuy ?? 0,
+                    swapSell: swapSell ?? 0,
+                    depositWalletAddress: depositWalletAddress || null,
+                    depositQrImageUrl: depositQrImageUrl || null,
                 },
             })
         } else {
@@ -64,10 +59,10 @@ export async function POST(request: Request) {
                     spreadMarkup: spread,
                     commissionPerLot: BigInt(commission),
                     liquidationLevel: losscut_level,
-                    swapRateBuy: BigInt(swap_rate_buy ?? 0),
-                    swapRateSell: BigInt(swap_rate_sell ?? 0),
-                    swapCalculationHour: swap_calculation_hour ?? 7,
-                    depositWalletAddress: deposit_wallet_address ?? undefined,
+                    swapBuy: swapBuy ?? 0,
+                    swapSell: swapSell ?? 0,
+                    depositWalletAddress: depositWalletAddress || null,
+                    depositQrImageUrl: depositQrImageUrl || null,
                 },
             })
         }
@@ -79,7 +74,7 @@ export async function POST(request: Request) {
                 action: "SETTINGS_UPDATED",
                 entityType: "SystemSettings",
                 entityId: existingSettings?.id || "new",
-                newValue: { spread, commission, losscut_level, swap_rate_buy, swap_rate_sell, swap_calculation_hour, deposit_wallet_address },
+                newValue: { spread, commission, losscut_level, swapBuy, swapSell, depositWalletAddress },
             },
         })
 
@@ -92,3 +87,4 @@ export async function POST(request: Request) {
         )
     }
 }
+

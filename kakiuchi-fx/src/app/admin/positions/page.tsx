@@ -1,7 +1,6 @@
 import { prisma } from "@/lib/prisma"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { translateStatus, formatDate } from "@/lib/utils"
-import { formatAmount } from "@/lib/utils/bigint"
 import { bigIntToPrice, bigIntToLot } from "@/lib/utils/bigint"
 
 export default async function AdminPositionsPage() {
@@ -42,7 +41,8 @@ export default async function AdminPositionsPage() {
                                         <th className="text-left py-3 px-4 text-sm font-medium text-slate-400">方向</th>
                                         <th className="text-right py-3 px-4 text-sm font-medium text-slate-400">ロット</th>
                                         <th className="text-right py-3 px-4 text-sm font-medium text-slate-400">エントリー</th>
-                                        <th className="text-right py-3 px-4 text-sm font-medium text-slate-400">必要証拠金</th>
+                                        <th className="text-right py-3 px-4 text-sm font-medium text-slate-400">S/L</th>
+                                        <th className="text-right py-3 px-4 text-sm font-medium text-slate-400">T/P</th>
                                         <th className="text-left py-3 px-4 text-sm font-medium text-slate-400">建玉日時</th>
                                     </tr>
                                 </thead>
@@ -61,8 +61,8 @@ export default async function AdminPositionsPage() {
                                             </td>
                                             <td className="py-4 px-4">
                                                 <span className={`px-2 py-1 rounded text-xs font-medium ${position.side === 'BUY'
-                                                        ? 'bg-green-500/20 text-green-400'
-                                                        : 'bg-red-500/20 text-red-400'
+                                                    ? 'bg-green-500/20 text-green-400'
+                                                    : 'bg-red-500/20 text-red-400'
                                                     }`}>
                                                     {translateStatus(position.side)}
                                                 </span>
@@ -73,8 +73,11 @@ export default async function AdminPositionsPage() {
                                             <td className="py-4 px-4 text-right text-white font-mono">
                                                 {bigIntToPrice(position.entryPrice).toFixed(3)}
                                             </td>
-                                            <td className="py-4 px-4 text-right text-white">
-                                                {formatAmount(position.margin, false)}
+                                            <td className="py-4 px-4 text-right text-red-400 font-mono text-sm">
+                                                {position.stopLoss ? bigIntToPrice(position.stopLoss).toFixed(3) : "---"}
+                                            </td>
+                                            <td className="py-4 px-4 text-right text-green-400 font-mono text-sm">
+                                                {position.takeProfit ? bigIntToPrice(position.takeProfit).toFixed(3) : "---"}
                                             </td>
                                             <td className="py-4 px-4 text-slate-400 text-sm">
                                                 {formatDate(position.openedAt)}
@@ -97,3 +100,4 @@ export default async function AdminPositionsPage() {
         </div>
     )
 }
+

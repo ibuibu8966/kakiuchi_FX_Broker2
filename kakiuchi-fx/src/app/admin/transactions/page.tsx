@@ -1,29 +1,34 @@
-import { prisma } from "@/lib/prisma"
+"use client"
+
+import { useAdminData } from "@/contexts/admin-data-context"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { translateStatus, formatDate, getStatusColor } from "@/lib/utils"
-import { formatAmount } from "@/lib/utils/bigint"
 import { TransactionActionButtons } from "./transaction-actions"
 import { CreateTransactionButton } from "./create-transaction-button"
 
-export default async function AdminTransactionsPage() {
-    const transactions = await prisma.transaction.findMany({
-        where: {
-            status: { in: ["PENDING", "APPROVED"] },
-        },
-        orderBy: [
-            { status: "asc" },
-            { createdAt: "asc" },
-        ],
-        include: {
-            account: {
-                include: {
-                    user: {
-                        select: { name: true, email: true },
-                    },
-                },
-            },
-        },
-    })
+function formatAmount(value: string | number | bigint): string {
+    const num = typeof value === "string" ? parseFloat(value) : Number(value)
+    return `$${(num / 100).toFixed(2)}`
+}
+
+export default function AdminTransactionsPage() {
+    const { transactions, isLoading, refreshTransactions } = useAdminData()
+
+    if (isLoading) {
+        return (
+            <div className="space-y-6">
+                <div>
+                    <h1 className="text-3xl font-bold text-white">入出金管理（USDT）</h1>
+                    <p className="text-slate-400 mt-1">読み込み中...</p>
+                </div>
+                <Card className="bg-slate-900/50 border-slate-800">
+                    <CardContent className="h-96 animate-pulse bg-slate-800/50 rounded" />
+                </Card>
+            </div>
+        )
+    }
+
+    const pendingCount = transactions.filter(t => t.status === "PENDING").length
 
     return (
         <div className="space-y-6">
@@ -38,7 +43,7 @@ export default async function AdminTransactionsPage() {
             <Card className="bg-slate-900/50 border-slate-800">
                 <CardHeader>
                     <CardTitle className="text-white">
-                        申請一覧 ({transactions.filter(t => t.status === "PENDING").length}件の承認待ち)
+                        申請一覧 ({pendingCount}件の承認待ち)
                     </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -60,7 +65,7 @@ export default async function AdminTransactionsPage() {
                                     {transactions.map((tx) => (
                                         <tr key={tx.id} className="border-b border-slate-800 hover:bg-slate-800/50">
                                             <td className="py-4 px-4 text-slate-400 text-sm">
-                                                {formatDate(tx.createdAt)}
+                                                {formatDate(new Date(tx.createdAt))}
                                             </td>
                                             <td className="py-4 px-4">
                                                 <p className="text-white font-medium">{tx.account.user.name}</p>
@@ -117,7 +122,8 @@ export default async function AdminTransactionsPage() {
                                                         transactionId={tx.id}
                                                         type={tx.type}
                                                         accountId={tx.accountId}
-                                                        amount={tx.amount.toString()}
+                                                        amount={tx.amount}
+                                                        onSuccess={refreshTransactions}
                                                     />
                                                 )}
                                             </td>

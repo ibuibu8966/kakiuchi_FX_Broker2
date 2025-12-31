@@ -1,11 +1,12 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect } from "react"
 import dynamic from "next/dynamic"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useWebSocketPrice } from "@/hooks/useWebSocketPrice"
 import { CompactPositions } from "@/components/trading/compact-positions"
+import { useCustomerData } from "@/contexts/customer-data-context"
 
 // チャートはSSRを無効化（windowオブジェクトを使用するため）
 const TradingChart = dynamic(
@@ -13,18 +14,12 @@ const TradingChart = dynamic(
     { ssr: false, loading: () => <div className="h-[400px] bg-slate-800/50 rounded-lg animate-pulse" /> }
 )
 
-interface AccountData {
-    balance: number
-    equity: number
-    usedMargin: number
-    freeMargin: number
-    marginLevel: number
-    leverage: number
-}
-
 export default function TradePage() {
+    // Get account and settings from context (prefetched)
+    const { account: contextAccount, settings, refreshAccount } = useCustomerData()
+
     // WebSocket for real-time price (with HTTP polling fallback)
-    const { price: wsPrice } = useWebSocketPrice(50)
+    const { price: wsPrice, isMarketClosed } = useWebSocketPrice(50)
     const [price, setPrice] = useState({ bid: 0, ask: 0, timestamp: "" })
     const [orderType, setOrderType] = useState<"MARKET" | "LIMIT" | "STOP">("MARKET")
     const [side, setSide] = useState<"BUY" | "SELL">("BUY")
@@ -34,37 +29,26 @@ export default function TradePage() {
     const [takeProfit, setTakeProfit] = useState("")
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
-    const [account, setAccount] = useState<AccountData | null>(null)
 
-    // Update price from WebSocket
+    // Use account from context
+    const account = contextAccount
+
+    // Use swap settings from context
+    const swapSettings = settings ? {
+        swapBuy: settings.swapBuy,
+        swapSell: settings.swapSell,
+    } : { swapBuy: 0, swapSell: 0 }
+
+    // Update price from WebSocket only when market is open
     useEffect(() => {
-        if (wsPrice) {
+        if (wsPrice && !isMarketClosed) {
             setPrice({
                 bid: wsPrice.bid,
                 ask: wsPrice.ask,
                 timestamp: wsPrice.timestamp,
             })
         }
-    }, [wsPrice])
-
-    // Fetch account data
-    const fetchAccount = useCallback(async () => {
-        try {
-            const res = await fetch("/api/account")
-            if (res.ok) {
-                const data = await res.json()
-                setAccount(data)
-            }
-        } catch {
-            // ignore
-        }
-    }, [])
-
-    useEffect(() => {
-        fetchAccount()
-        const interval = setInterval(fetchAccount, 2000) // 2秒ごとに更新
-        return () => clearInterval(interval)
-    }, [fetchAccount])
+    }, [wsPrice, isMarketClosed])
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -96,7 +80,7 @@ export default function TradePage() {
             setLimitPrice("")
             setStopLoss("")
             setTakeProfit("")
-            fetchAccount() // 残高更新
+            refreshAccount() // 残高更新
         } catch (err) {
             setMessage({ type: "error", text: err instanceof Error ? err.message : "エラーが発生しました" })
         } finally {
@@ -119,6 +103,12 @@ export default function TradePage() {
                         <span className="px-2 py-0.5 rounded text-xs bg-blue-500/20 text-blue-400">
                             1Lot = 100,000 GBP
                         </span>
+                        {/* 市場クローズ表示 */}
+                        {isMarketClosed && (
+                            <span className="px-3 py-1 rounded text-xs font-bold bg-red-500/20 text-red-400 border border-red-500/30 animate-pulse">
+                                🔒 市場クローズ中
+                            </span>
+                        )}
                     </div>
                 </div>
 
@@ -160,16 +150,21 @@ export default function TradePage() {
                         <button
                             type="button"
                             onClick={() => setSide("SELL")}
-                            className={`relative p-4 rounded-lg border transition-all ${side === "SELL"
-                                ? "bg-red-500/20 border-red-500 ring-1 ring-red-500"
-                                : "bg-slate-900 border-slate-800 hover:border-red-500/50"
+                            disabled={isMarketClosed}
+                            className={`relative p-4 rounded-lg border transition-all ${isMarketClosed
+                                ? "bg-slate-900/50 border-slate-800 opacity-50 cursor-not-allowed"
+                                : side === "SELL"
+                                    ? "bg-red-500/20 border-red-500 ring-1 ring-red-500"
+                                    : "bg-slate-900 border-slate-800 hover:border-red-500/50"
                                 }`}
                         >
-                            <div className="text-xs text-red-400 mb-1">SELL</div>
-                            <div className="text-3xl font-bold text-red-400 font-mono tracking-tight">
+                            <div className="text-xs text-red-400 mb-1">
+                                {isMarketClosed ? "CLOSED" : "SELL"}
+                            </div>
+                            <div className={`text-3xl font-bold font-mono tracking-tight ${isMarketClosed ? "text-slate-500" : "text-red-400"}`}>
                                 {price.bid > 0 ? price.bid.toFixed(3) : "---"}
                             </div>
-                            {side === "SELL" && (
+                            {side === "SELL" && !isMarketClosed && (
                                 <div className="absolute top-2 right-2 w-2 h-2 rounded-full bg-red-500 animate-pulse" />
                             )}
                         </button>
@@ -178,16 +173,21 @@ export default function TradePage() {
                         <button
                             type="button"
                             onClick={() => setSide("BUY")}
-                            className={`relative p-4 rounded-lg border transition-all ${side === "BUY"
-                                ? "bg-green-500/20 border-green-500 ring-1 ring-green-500"
-                                : "bg-slate-900 border-slate-800 hover:border-green-500/50"
+                            disabled={isMarketClosed}
+                            className={`relative p-4 rounded-lg border transition-all ${isMarketClosed
+                                ? "bg-slate-900/50 border-slate-800 opacity-50 cursor-not-allowed"
+                                : side === "BUY"
+                                    ? "bg-green-500/20 border-green-500 ring-1 ring-green-500"
+                                    : "bg-slate-900 border-slate-800 hover:border-green-500/50"
                                 }`}
                         >
-                            <div className="text-xs text-green-400 mb-1">BUY</div>
-                            <div className="text-3xl font-bold text-green-400 font-mono tracking-tight">
+                            <div className="text-xs text-green-400 mb-1">
+                                {isMarketClosed ? "CLOSED" : "BUY"}
+                            </div>
+                            <div className={`text-3xl font-bold font-mono tracking-tight ${isMarketClosed ? "text-slate-500" : "text-green-400"}`}>
                                 {price.ask > 0 ? price.ask.toFixed(3) : "---"}
                             </div>
-                            {side === "BUY" && (
+                            {side === "BUY" && !isMarketClosed && (
                                 <div className="absolute top-2 right-2 w-2 h-2 rounded-full bg-green-500 animate-pulse" />
                             )}
                         </button>
@@ -304,6 +304,23 @@ export default function TradePage() {
                                 </div>
                             </div>
 
+                            {/* スワップ情報 */}
+                            <div className="p-2 rounded bg-slate-800/50 border border-slate-700">
+                                <p className="text-xs text-slate-400 mb-1">スワップ（1日あたり）</p>
+                                <div className="flex justify-between text-xs">
+                                    <span className="text-slate-500">BUY:</span>
+                                    <span className={swapSettings.swapBuy >= 0 ? "text-green-400" : "text-red-400"}>
+                                        {swapSettings.swapBuy >= 0 ? "+" : ""}{swapSettings.swapBuy.toFixed(1)} pt
+                                    </span>
+                                </div>
+                                <div className="flex justify-between text-xs">
+                                    <span className="text-slate-500">SELL:</span>
+                                    <span className={swapSettings.swapSell >= 0 ? "text-green-400" : "text-red-400"}>
+                                        {swapSettings.swapSell >= 0 ? "+" : ""}{swapSettings.swapSell.toFixed(1)} pt
+                                    </span>
+                                </div>
+                            </div>
+
                             {/* メッセージ */}
                             {message && (
                                 <div className={`p-2 rounded text-xs ${message.type === "success"
@@ -314,16 +331,25 @@ export default function TradePage() {
                                 </div>
                             )}
 
+                            {/* 市場クローズ警告 */}
+                            {isMarketClosed && (
+                                <div className="p-2 rounded text-xs bg-red-500/10 text-red-400 border border-red-500/20 text-center">
+                                    🔒 市場がクローズしています。取引できません。
+                                </div>
+                            )}
+
                             {/* 注文ボタン */}
                             <Button
                                 type="submit"
-                                disabled={isSubmitting || price.bid <= 0}
-                                className={`w-full py-5 text-base font-bold ${side === "BUY"
-                                    ? "bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800"
-                                    : "bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800"
+                                disabled={isSubmitting || price.bid <= 0 || isMarketClosed}
+                                className={`w-full py-5 text-base font-bold ${isMarketClosed
+                                    ? "bg-slate-600 cursor-not-allowed"
+                                    : side === "BUY"
+                                        ? "bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800"
+                                        : "bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800"
                                     }`}
                             >
-                                {isSubmitting ? "処理中..." : side === "BUY"
+                                {isMarketClosed ? "市場クローズ中" : isSubmitting ? "処理中..." : side === "BUY"
                                     ? `買い @ ${price.ask > 0 ? price.ask.toFixed(3) : "---"}`
                                     : `売り @ ${price.bid > 0 ? price.bid.toFixed(3) : "---"}`
                                 }

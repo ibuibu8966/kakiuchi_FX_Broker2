@@ -1,29 +1,27 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-
-// 会社のUSDTウォレットアドレス（TRC20）
-const COMPANY_WALLET_ADDRESS = "TXxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+import { useCustomerData } from "@/contexts/customer-data-context"
 
 type TabType = "deposit" | "withdraw" | "history"
 
-interface Transaction {
-    id: string
-    type: "DEPOSIT" | "WITHDRAWAL"
-    amount: string
-    status: string
-    network: string | null
-    walletAddress: string | null
-    txHash: string | null
-    createdAt: string
-}
-
 export default function WalletPage() {
+    // Get data from context (prefetched)
+    const { transactions: contextTransactions, settings, refreshTransactions } = useCustomerData()
+
     const [activeTab, setActiveTab] = useState<TabType>("deposit")
-    const [transactions, setTransactions] = useState<Transaction[]>([])
+
+    // Use context data for wallet settings
+    const walletSettings = settings ? {
+        depositWalletAddress: settings.depositWalletAddress,
+        depositQrImageUrl: settings.depositQrImageUrl,
+    } : { depositWalletAddress: null, depositQrImageUrl: null }
+
+    // Use context transactions
+    const transactions = contextTransactions
 
     // 入金用state
     const [depositStep, setDepositStep] = useState<"request" | "confirm">("request")
@@ -39,22 +37,6 @@ export default function WalletPage() {
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
 
-    const fetchTransactions = useCallback(async () => {
-        try {
-            const res = await fetch("/api/transactions")
-            if (res.ok) {
-                const data = await res.json()
-                setTransactions(data.transactions || [])
-            }
-        } catch {
-            // ignore
-        }
-    }, [])
-
-    useEffect(() => {
-        fetchTransactions()
-    }, [fetchTransactions])
-
     // 入金申請
     const handleDepositRequest = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -69,7 +51,7 @@ export default function WalletPage() {
                     type: "DEPOSIT",
                     amount: parseFloat(depositAmount),
                     network: "TRC20",
-                    depositAddress: COMPANY_WALLET_ADDRESS,
+                    depositAddress: walletSettings.depositWalletAddress || "",
                 }),
             })
 
@@ -78,7 +60,7 @@ export default function WalletPage() {
 
             setDepositTransactionId(data.transactionId)
             setDepositStep("confirm")
-            fetchTransactions()
+            refreshTransactions()
         } catch (err) {
             setMessage({ type: "error", text: err instanceof Error ? err.message : "エラーが発生しました" })
         } finally {
@@ -106,7 +88,7 @@ export default function WalletPage() {
             setDepositAmount("")
             setTxHash("")
             setDepositStep("request")
-            fetchTransactions()
+            refreshTransactions()
         } catch (err) {
             setMessage({ type: "error", text: err instanceof Error ? err.message : "エラーが発生しました" })
         } finally {
@@ -144,7 +126,7 @@ export default function WalletPage() {
             setMessage({ type: "success", text: "出金申請を受け付けました。管理者の確認後、送金されます。" })
             setWithdrawAmount("")
             setWalletAddress("")
-            fetchTransactions()
+            refreshTransactions()
         } catch (err) {
             setMessage({ type: "error", text: err instanceof Error ? err.message : "エラーが発生しました" })
         } finally {
@@ -153,9 +135,11 @@ export default function WalletPage() {
     }
 
     const copyToClipboard = () => {
-        navigator.clipboard.writeText(COMPANY_WALLET_ADDRESS)
-        setMessage({ type: "success", text: "アドレスをコピーしました" })
-        setTimeout(() => setMessage(null), 2000)
+        if (walletSettings.depositWalletAddress) {
+            navigator.clipboard.writeText(walletSettings.depositWalletAddress)
+            setMessage({ type: "success", text: "アドレスをコピーしました" })
+            setTimeout(() => setMessage(null), 2000)
+        }
     }
 
     const getStatusBadge = (status: string) => {
@@ -262,11 +246,23 @@ export default function WalletPage() {
                         <CardContent>
                             {depositStep === "confirm" ? (
                                 <div className="space-y-4">
+                                    {/* QRコード表示 */}
+                                    {walletSettings.depositQrImageUrl && (
+                                        <div className="flex justify-center p-4 bg-white rounded-lg">
+                                            <img
+                                                src={walletSettings.depositQrImageUrl}
+                                                alt="入金用QRコード"
+                                                className="w-48 h-48 object-contain"
+                                            />
+                                        </div>
+                                    )}
                                     <div className="p-4 rounded-lg bg-slate-800 border border-slate-700">
                                         <label className="text-sm text-slate-400 block mb-2">送金先アドレス（TRC20）</label>
                                         <div className="flex gap-2">
-                                            <code className="flex-1 p-3 bg-slate-900 rounded text-green-400 text-xs break-all">{COMPANY_WALLET_ADDRESS}</code>
-                                            <Button type="button" onClick={copyToClipboard} variant="outline" size="sm">コピー</Button>
+                                            <code className="flex-1 p-3 bg-slate-900 rounded text-green-400 text-xs break-all">
+                                                {walletSettings.depositWalletAddress || "アドレス未設定"}
+                                            </code>
+                                            <Button type="button" onClick={copyToClipboard} variant="outline" size="sm" disabled={!walletSettings.depositWalletAddress}>コピー</Button>
                                         </div>
                                     </div>
                                     <div className="p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
